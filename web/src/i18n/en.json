@@ -1,0 +1,280 @@
+
+{
+ "home.hero_title": "German Craftsmanship for Connoisseurs",
+  "home.hero_subtitle": "Handcrafted tobacco pipes from Tenovo, North Macedonia.",
+  "home.view_collection": "View Collection",
+  "home.our_story": "Our Story",
+  "home.story_text": "Since 1989, we’ve passionately crafted premium tobacco pipes. Each piece is a masterpiece of tradition, technique, and attention to detail.",
+  "home.featured_models": "Featured Models",
+  "home.model": "Model",
+  "home.model_sub": "Fine wood, beautifully crafted.",
+  "home.see_all": "See All Products",
+  "home.testimonials": "Customer Testimonials",
+  "home.testimonial_1": "The best pipe I've ever smoked – finely made and a pleasure to hold.",
+  "home.testimonial_1_name": "Mr. B. from Munich",
+  "home.testimonial_2": "A wooden masterpiece. I immediately ordered two.",
+  "home.testimonial_2_name": "Ms. R. from Zurich",
+  "home.nav_home": "Home",
+  "home.nav_about": "About",
+  "home.nav_contact": "Contact",
+
+  "home": "Home",
+  "about": "About",
+  "orders": "Orders",
+  "contact": "Contact",
+  "signin": "Sign In",
+  "join": "Join Now",
+
+  "section1_title": "Mastering the Art of Pipe Making",
+  "section1_feat1": "Handcrafted from finest briar wood",
+  "section1_feat2": "Unique designs, no two alike",
+  "section1_feat3": "Decades of artisan tradition",
+  "section1_feat4": "Sourced locally in Tetovo, North Macedonia",
+  "section1_quote": "Each pipe tells a story carved with care.",
+  "learn_more_button": "Learn More",
+  "section1_img_alt": "Artisan carving a tobacco pipe",
+
+    "section2_title": "Our Pipe Collection",
+  "model_1": "Model 1",
+  "model_1_price": "$149 · Handmade",
+  "model_1_sub": "Fine wood, beautifully crafted.",
+
+  "model_2": "Model 2",
+  "model_2_price": "$149 · Handmade",
+  "model_2_sub": "Fine wood, beautifully crafted.",
+
+  "model_3": "Model 3",
+  "model_3_price": "$149 · Handmade",
+  "model_3_sub": "Fine wood, beautifully crafted.",
+
+  "view_detail": "View Details",
+
+    "timeline_title": "Crafted by Time",
+  "timeline_intro": "Moments that shaped our craft.",
+  "timeline_event1": "Founded by artisan masters in Tetovo.",
+  "timeline_event2": "Introduced signature handmade briar pipes.",
+  "timeline_event3": "Gained international recognition across Europe.",
+  "timeline_event4": "Opened modern facility and launched global online store.",
+  "learn_more_button": "Discover Our Story",
+
+    "quote_text": "Every pipe tells a story — one of patience, fire, and legacy.",
+  "quote_author": "Master Artisan, Telemax",
+  "contact_cta": "Get in Touch",
+
+    "testimonials_title": "What Our Clients Say",
+
+  "testimonial1_text": "Absolutely stunning craftsmanship. My pipe feels like a piece of history in my hands.",
+  "testimonial1_author": "Elton Gashi, Zurich",
+
+  "testimonial2_text": "Each product feels truly one-of-a-kind. The detail and tradition shine through.",
+  "testimonial2_author": "Marija Petrova, Skopje",
+
+  "testimonial3_text": "Telemax pipes make perfect gifts. Everyone I’ve given one to is amazed by the quality.",
+  "testimonial3_author": "Andreas Müller, Berlin",
+
+
+    "gallery_title": "Gallery of Craftsmanship",
+  "gallery_item_label": "Tap to view",
+
+  "faq_title": "Frequently Asked Questions",
+ "faq_q1": "What materials do you use for your pipes?",
+  "faq_a1": "We use only high-quality briar wood...",
+  "faq_q2": "Are your products handmade?",
+  "faq_a2": "Yes, each piece is handcrafted...",
+  "faq_q3": "Do you ship internationally?",
+  "faq_a3": "Absolutely. We deliver worldwide...",
+  "faq_q4": "Can I request a custom pipe design?",
+  "faq_a4": "Yes! Reach out via our contact form...",
+
+  "about.title": "Crafting Stories in Every Pipe",
+"about.subtitle": "Where tradition meets design excellence",
+
+
+
+
+  "company_history_title": "Company History & Philosophy",
+  "company_history_paragraph1": "Our company’s story began in 1965 in Germany, built on a foundation of quality, success, and entrepreneurial spirit. In 2008, we expanded geographically to North Macedonia and operate now in the global market, continually growing with our loyal customers and partners.",
+  "company_history_paragraph2": "Our philosophy reflects dedication to authenticity, sustainability, and craftsmanship passed down through generations. Every piece is carefully handcrafted with timeless quality and intentional design.",
+  "company_history_image_alt": "Philosophy and craftsmanship",
+
+    "products_achievements_title": "Our Products & Achievements",
+  "products_achievements_lighters_title": "Lighters & Smoking Accessories",
+  "products_achievements_lighters_item1": "60+ years as specialist European lighter importers",
+  "products_achievements_lighters_item2": "Distribution of lighters, shishas, electric cigarettes, and filters",
+  "products_achievements_lighters_item3": "ISO 9001:2015 Quality Management, AEO Certified Sender, BSCI Social Compliance",
+  "products_achievements_lighters_item4": "Global presence in over 60 countries",
+  "products_achievements_image_placeholder": "Image Placeholder",
+  "products_achievements_pipe_factory_title": "Smoking Tobacco Pipe Factory",
+  "products_achievements_pipe_factory_paragraph1": "We proudly produce smoking pipes under our brand “Carlo Perrucci” and also as private labeling for many worldwide customers. Our products include pipe stands, tampers, and decorative wood pipes.",
+  "products_achievements_pipe_factory_paragraph2": "Crafted from the finest materials, each pipe is a unique, handcrafted heirloom designed to be treasured across generations.",
+
+
+
+    "quote_section.image_alt": "Background",
+  "quote_section.text": "Design is not just what it looks like and feels like. Design is how it works.",
+  "quote_section.author": "Steve Jobs",
+
+
+    "team_title": "Meet the Team",
+
+    
+    "cta_footer_text": "Ready to experience the craft?",
+  "cta_footer_button": "Get in Touch",
+
+
+    "contact_title": "Contact Us",
+  "contact_subtitle": "We’re here to answer your questions, hear your feedback, and assist with your custom orders.",
+  "contact_name": "Name",
+  "contact_email": "Email",
+  "contact_message": "Message",
+  "contact_submit": "Send Message",
+
+
+
+    "additional_info_title": "Why Choose Us?",
+  "additional_info_expert_title": "Expert Craftsmanship",
+  "additional_info_expert_text": "Over 20 years of experience in creating bespoke pieces with attention to every detail.",
+  "additional_info_personalized_title": "Personalized Service",
+  "additional_info_personalized_text": "We work closely with you from concept to completion, ensuring your vision becomes reality.",
+  "additional_info_quality_title": "Quality Guarantee",
+  "additional_info_quality_text": "We stand behind our work with comprehensive warranties and ongoing support.",
+
+
+
+    "contact.header.title": "Get In Touch",
+  "contact.header.subtitle": "Ready to discuss your project? We're here to bring your vision to life with exceptional craftsmanship and personalized service.",
+
+  "contact.info.title": "Contact Information",
+  "contact.info.email.label": "Email",
+  "contact.info.email.value": "hello@craftedexcellence.com",
+  "contact.info.phone.label": "Phone",
+  "contact.info.phone.value": "+1 (555) 123-4567",
+  "contact.info.address.label": "Address",
+  "contact.info.address.street": "123 Artisan Way",
+  "contact.info.address.district": "Craftsman District",
+  "contact.info.address.city": "New York, NY 10001",
+  "contact.info.hours.label": "Business Hours",
+  "contact.info.hours.weekdays": "Mon - Fri: 9:00 AM - 6:00 PM",
+  "contact.info.hours.saturday": "Saturday: 10:00 AM - 4:00 PM",
+  "contact.info.hours.sunday": "Sunday: Closed",
+
+  "contact.form.title": "Send Us a Message",
+  "contact.form.firstName.label": "First Name",
+  "contact.form.firstName.placeholder": "John",
+  "contact.form.lastName.label": "Last Name",
+  "contact.form.lastName.placeholder": "Doe",
+  "contact.form.email.label": "Email Address",
+  "contact.form.email.placeholder": "john@example.com",
+  "contact.form.phone.label": "Phone Number",
+  "contact.form.phone.placeholder": "+1 (555) 123-4567",
+  "contact.form.company.label": "Company",
+  "contact.form.company.placeholder": "Your Company",
+  "contact.form.subject.label": "Subject",
+  "contact.form.subject.placeholder": "Select a subject",
+  "contact.form.subject.options.customOrder": "Custom Order",
+  "contact.form.subject.options.consultation": "Consultation",
+  "contact.form.subject.options.generalInquiry": "General Inquiry",
+  "contact.form.subject.options.support": "Support",
+  "contact.form.subject.options.partnership": "Partnership",
+  "contact.form.message.label": "Message",
+  "contact.form.message.placeholder": "Tell us about your project, requirements, timeline, or any questions you have...",
+  "contact.form.button.sending": "Sending...",
+  "contact.form.button.send": "Send Message",
+
+  "contact.success.title": "Thank You!",
+  "contact.success.message": "Your message has been sent successfully. We'll get back to you soon.",
+
+  "contact.additional.title": "Why Choose Us?",
+  "contact.additional.expert.title": "Expert Craftsmanship",
+  "contact.additional.expert.text": "With years of experience, we deliver top-tier handcrafted solutions.",
+  "contact.additional.personalized.title": "Personalized Service",
+  "contact.additional.personalized.text": "We work closely with each client to tailor solutions to their needs.",
+  "contact.additional.quality.title": "Unmatched Quality",
+  "contact.additional.quality.text": "Our commitment to quality ensures every piece exceeds expectations.",
+
+
+    "footer.company": "Telemax",
+  "footer.description": "Handcrafted tobacco pipes from Tenovo, Tetovo, North Macedonia. Tradition and quality in every detail.",
+  "footer.links.title": "Quick Links",
+  "footer.links.home": "Home",
+  "footer.links.about": "About Us",
+  "footer.links.products": "Products",
+  "footer.links.contact": "Contact",
+  "footer.contact.title": "Contact",
+  "footer.contact.location": "📍 Tenovo, Tetovo, North Macedonia",
+  "footer.contact.phone": "📞 +389 70 123 4567",
+  "footer.contact.email": "✉️ info@telemax.mk",
+  "footer.rights": "Telemax GmbH. All rights reserved.",
+
+
+  "sidebar_categories": "Categories",
+  "cat_all": "All",
+  "cat_wood": "Wood",
+  "cat_metal": "Metal",
+  "cat_hybrid": "Hybrid",
+  "cat_luxury": "Luxury",
+
+
+
+
+
+    "orders.categories": "Categories",
+  "orders.sort.newest": "📅 Newest First",
+  "orders.sort.oldest": "📅 Oldest First",
+  "orders.sort.az": "🔤 A–Z",
+  "orders.sort.za": "🔤 Z–A",
+  "orders.noProducts": "😕 No products found",
+  "orders.add": "+ Add",
+  "orders.customize": "🎨 Start Customizing",
+  "orders.viewCart": "🛒 View Cart ({{count}})",
+
+
+
+    "premiumTobaccoPipes": "Premium Tobacco Pipes",
+  "discoverCollection": "Discover our collection of handcrafted pipes or create your own masterpiece",
+  "searchPlaceholder": "🔍 Search commercial pipes...",
+  "commercial": "Commercial",
+  "customBuilder": "Custom Builder",
+  "customPipeBuilder": "Custom Pipe Builder",
+  "step1": "Step 1: Choose Your Pipe Head",
+  "step2": "Step 2: Choose Your Ring",
+  "step3": "Step 3: Choose Your Tail",
+  "yourCustomPipe": "Your Custom Pipe",
+  "yourCustomPipePreview": "Your Custom Pipe Preview",
+  "editMode": "Edit Mode",
+  "previewMode": "Preview Mode",
+  "addToCart": "Add to Cart",
+  "nameCustomPipe": "Name your custom pipe...",
+  "inStock": "In Stock",
+  "buildHeader": "Build your perfect pipe from premium components",
+  "incompleteDesign": "Incomplete Design",
+  "completeYourDesign": "Please select all three components to preview your custom pipe",
+  "returnToBuilder": "Return to Builder",
+  "addCustomPipeToCart": "Add Custom Pipe to Cart",
+  "cart": "Cart",
+  "items": "item(s)",
+  "selected": "Selected",
+  "visualAssembly": "Visual Assembly",
+  "pipeDetails": "Pipe Details",
+  "pricingBreakdown": "Pricing Breakdown",
+  "specifications": "Specifications",
+  "name": "Name",
+  "head": "Head",
+  "ring": "Ring",
+  "tail": "Tail",
+  "total": "Total",
+  "estimatedWeight": "Estimated Weight",
+  "bowlCapacity": "Bowl Capacity",
+  "length": "Length",
+  "productionTime": "Production Time",
+  "days": "days",
+  "customPipeDefault": "Custom Pipe",
+  "unnamedCustomPipe": "Unnamed Custom Pipe",
+  "completeYourDesignAlert": "Please complete your custom pipe design and add a name!",
+  "customPipeAddedAlert": "Custom pipe added to cart!",
+
+    "browse_orders": "Explore All Pipes"
+
+}
+
+
