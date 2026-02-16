@@ -1,4 +1,4 @@
-// pages/signup.tsx
+// pages/signup.tsx - FIXED TO MATCH BACKEND
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -8,7 +8,7 @@ type Form = {
   last_name: string;
   email: string;
   password: string;
-  phone: string;
+  phone_number: string;  // Changed from 'phone'
   date_of_birth: string;
   country: string;
   shipping_address: string;
@@ -17,7 +17,7 @@ type Form = {
   age_verified: boolean;
   terms_accepted: boolean;
   privacy_accepted: boolean;
-  marketing_consent: boolean;
+  marketing_emails: boolean;  // Changed from 'marketing_consent'
 };
 
 const calcAge = (dob: string) => {
@@ -32,11 +32,12 @@ export default function SignUp() {
   const navigate = useNavigate();
   const [form, setForm] = useState<Form>({
     first_name: "", last_name: "", email: "", password: "",
-    phone: "", date_of_birth: "", country: "",
+    phone_number: "",  // Changed from 'phone'
+    date_of_birth: "", country: "",
     shipping_address: "", billing_address: "",
     same_billing_address: true,
     age_verified: false, terms_accepted: false, privacy_accepted: false,
-    marketing_consent: false,
+    marketing_emails: false,  // Changed from 'marketing_consent'
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -66,12 +67,16 @@ export default function SignUp() {
 
     setLoading(true);
     try {
-      // Backend only requires these four; extra fields are ignored server-side
+      // Send ALL fields that backend User.create() expects
       const payload = {
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
-        email: form.email.trim(),
+        email: form.email.trim().toLowerCase(),
         password: form.password,
+        phone_number: form.phone_number.trim() || null,  // Changed from 'phone'
+        date_of_birth: form.date_of_birth || null,
+        country: form.country || null,
+        marketing_emails: form.marketing_emails,  // Changed from 'marketing_consent'
       };
 
       const { data } = await api.post("/api/auth/signup", payload);
@@ -110,7 +115,7 @@ export default function SignUp() {
           <input name="password" type="password" placeholder="Password" value={form.password} onChange={handleChange} required className="w-full bg-[#13100d] px-4 py-2 rounded-md border border-stone-700 focus:outline-none focus:ring-2 focus:ring-[#c9a36a]" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="phone" type="tel" placeholder="Phone Number" value={form.phone} onChange={handleChange} className="w-full bg-[#13100d] px-4 py-2 rounded-md border border-stone-700 focus:outline-none focus:ring-2 focus:ring-[#c9a36a]" />
+            <input name="phone_number" type="tel" placeholder="Phone Number" value={form.phone_number} onChange={handleChange} className="w-full bg-[#13100d] px-4 py-2 rounded-md border border-stone-700 focus:outline-none focus:ring-2 focus:ring-[#c9a36a]" />
             <input name="date_of_birth" type="date" placeholder="Date of Birth" value={form.date_of_birth} onChange={handleChange} required className="w-full bg-[#13100d] px-4 py-2 rounded-md border border-stone-700 focus:outline-none focus:ring-2 focus:ring-[#c9a36a]" />
           </div>
 
@@ -152,7 +157,7 @@ export default function SignUp() {
               <span className="text-sm">I accept the <span className="text-[#c9a36a] underline">Privacy Policy</span></span>
             </label>
             <label className="flex items-start gap-2">
-              <input type="checkbox" name="marketing_consent" checked={form.marketing_consent} onChange={handleChange} className="w-4 h-4 mt-1" />
+              <input type="checkbox" name="marketing_emails" checked={form.marketing_emails} onChange={handleChange} className="w-4 h-4 mt-1" />
               <span className="text-sm">I want to receive marketing emails (optional)</span>
             </label>
           </div>
