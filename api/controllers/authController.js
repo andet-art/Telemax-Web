@@ -4,7 +4,7 @@ const { validationResult } = require('express-validator');
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE
+    expiresIn: process.env.JWT_EXPIRE || '7d'
   });
 };
 
@@ -27,6 +27,7 @@ exports.register = async (req, res, next) => {
       date_of_birth, 
       country,
       shipping_address,
+      billing_address,
       billing_same_as_shipping,
       marketing_emails,
       terms_accepted,
@@ -34,6 +35,7 @@ exports.register = async (req, res, next) => {
       age_verified
     } = req.body;
 
+    // Validate required consents
     if (!terms_accepted || !privacy_accepted || !age_verified) {
       return res.status(400).json({
         success: false,
@@ -41,6 +43,7 @@ exports.register = async (req, res, next) => {
       });
     }
 
+    // Check if user already exists
     const existingUser = await User.findByEmail(email);
     if (existingUser) {
       return res.status(400).json({
@@ -49,6 +52,7 @@ exports.register = async (req, res, next) => {
       });
     }
 
+    // Create user
     const userId = await User.create({ 
       first_name, 
       last_name, 
@@ -60,17 +64,31 @@ exports.register = async (req, res, next) => {
       marketing_emails: marketing_emails || false
     });
 
-    if (shipping_address) {
+    // Create shipping address if provided
+    if (shipping_address && shipping_address.trim()) {
       await User.createAddress(userId, {
         address_type: billing_same_as_shipping ? 'both' : 'shipping',
         full_address: shipping_address,
-        country: country
+        country: country,
+        is_default: true
       });
     }
 
+    // Create separate billing address if provided and different
+    if (billing_address && billing_address.trim() && !billing_same_as_shipping) {
+      await User.createAddress(userId, {
+        address_type: 'billing',
+        full_address: billing_address,
+        country: country,
+        is_default: false
+      });
+    }
+
+    // Get IP and user agent for consent tracking
     const ip_address = req.ip || req.connection.remoteAddress;
     const user_agent = req.headers['user-agent'];
 
+    // Record terms of service consent
     await User.createConsent(userId, {
       consent_type: 'terms_of_service',
       is_accepted: true,
@@ -78,6 +96,7 @@ exports.register = async (req, res, next) => {
       user_agent
     });
 
+    // Record privacy policy consent
     await User.createConsent(userId, {
       consent_type: 'privacy_policy',
       is_accepted: true,
@@ -85,6 +104,7 @@ exports.register = async (req, res, next) => {
       user_agent
     });
 
+    // Record age verification consent
     await User.createConsent(userId, {
       consent_type: 'age_verification',
       is_accepted: true,
@@ -92,6 +112,7 @@ exports.register = async (req, res, next) => {
       user_agent
     });
 
+    // Record marketing consent if opted in
     if (marketing_emails) {
       await User.createConsent(userId, {
         consent_type: 'marketing_emails',
@@ -101,6 +122,7 @@ exports.register = async (req, res, next) => {
       });
     }
 
+    // Generate JWT token
     const token = generateToken(userId);
 
     res.status(201).json({
@@ -115,6 +137,7 @@ exports.register = async (req, res, next) => {
       }
     });
   } catch (error) {
+    console.error('Registration error:', error);
     next(error);
   }
 };
@@ -131,6 +154,7 @@ exports.login = async (req, res, next) => {
 
     const { email, password } = req.body;
 
+    // Find user by email
     const user = await User.findByEmail(email);
     if (!user) {
       return res.status(401).json({
@@ -139,6 +163,7 @@ exports.login = async (req, res, next) => {
       });
     }
 
+    // Check if account is active
     if (!user.is_active) {
       return res.status(401).json({
         success: false,
@@ -146,6 +171,7 @@ exports.login = async (req, res, next) => {
       });
     }
 
+    // Verify password
     const isMatch = await User.comparePassword(password, user.password);
     if (!isMatch) {
       return res.status(401).json({
@@ -154,8 +180,10 @@ exports.login = async (req, res, next) => {
       });
     }
 
+    // Update last login timestamp
     await User.updateLastLogin(user.id);
 
+    // Generate JWT token
     const token = generateToken(user.id);
 
     res.json({
@@ -170,6 +198,7 @@ exports.login = async (req, res, next) => {
       }
     });
   } catch (error) {
+    console.error('Login error:', error);
     next(error);
   }
 };
@@ -190,6 +219,7 @@ exports.getCurrentUser = async (req, res, next) => {
       user
     });
   } catch (error) {
+    console.error('Get current user error:', error);
     next(error);
   }
 };

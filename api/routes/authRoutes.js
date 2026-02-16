@@ -12,10 +12,10 @@ const registerValidation = [
   body('phone_number').optional().isMobilePhone().withMessage('Please provide a valid phone number'),
   body('date_of_birth').optional().isDate().withMessage('Please provide a valid date of birth'),
   body('country').optional().trim().isLength({ min: 2 }).withMessage('Please provide a valid country'),
-  body('shipping_address').optional().trim().isLength({ min: 10 }).withMessage('Shipping address must be at least 10 characters'),
-  body('terms_accepted').equals('true').withMessage('You must accept the terms of service'),
-  body('privacy_accepted').equals('true').withMessage('You must accept the privacy policy'),
-  body('age_verified').equals('true').withMessage('You must verify that you are 18+')
+  body('marketing_emails').optional().isBoolean(),
+  body('terms_accepted').optional().isBoolean(),
+  body('privacy_accepted').optional().isBoolean(),
+  body('age_verified').optional().isBoolean()
 ];
 
 const loginValidation = [
@@ -23,8 +23,14 @@ const loginValidation = [
   body('password').notEmpty().withMessage('Password is required')
 ];
 
+// Main routes
 router.post('/register', registerValidation, authController.register);
 router.post('/login', loginValidation, authController.login);
+
+// Aliases for frontend compatibility
+router.post('/signup', registerValidation, authController.register);
+router.post('/signin', loginValidation, authController.login);
+
 router.get('/me', authMiddleware, authController.getCurrentUser);
 
 module.exports = router;
