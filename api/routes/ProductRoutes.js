@@ -1,12 +1,10 @@
-import { Router } from "express";
-import { getProducts, getProduct } from "./controllers/productController.js";
+// /routes/ProductRoutes.js
+const express = require("express");
+const router = express.Router();
 
-const router = Router();
+const { getProducts } = require("./controllers/productController");
 
-// GET /api/products?q=&type_id=&subtype_id=&active=1&limit=200&offset=0
+// GET /api/products
 router.get("/", getProducts);
 
-// GET /api/products/:id
-router.get("/:id", getProduct);
-
-export default router;
+module.exports = router;
