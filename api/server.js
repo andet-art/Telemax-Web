@@ -10,7 +10,7 @@ require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const profileRoutes = require('./routes/profileRoutes');
-const productRoutes = require('./routes/productRoutes'); // ✅ ADD THIS
+const productRoutes = require('./routes/ProductRoutes'); // ✅ ADD THIS
 
 const errorHandler = require('./middleware/errorHandler');
 
