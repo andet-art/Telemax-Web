@@ -12,15 +12,22 @@ const Footer = () => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.8, ease: "easeOut" }}
-      className="bg-[#16100b] text-stone-400 py-12 px-6 select-none"
+      className="bg-[#16100b] text-stone-400 py-14 px-6 select-none border-t border-[#2d221a]"
     >
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
-        {/* About */}
+
+        {/* Company Section with Logo */}
         <div>
-          <h3 className="text-white font-serif text-2xl mb-4">{t("footer.company")}</h3>
+          <img
+            src="/assets/telemax-logo.png"
+            alt="Company Logo"
+            className="h-20 w-auto object-contain mb-6"
+          />
+
           <p className="text-stone-400 max-w-sm leading-relaxed mb-6">
             {t("footer.description")}
           </p>
+
           <div className="flex space-x-5">
             {[FaFacebookF, FaInstagram, FaTwitter, FaLinkedinIn].map((Icon, idx) => (
               <a
@@ -37,7 +44,10 @@ const Footer = () => {
 
         {/* Quick Links */}
         <div>
-          <h4 className="text-white font-semibold text-xl mb-4">{t("footer.links.title")}</h4>
+          <h4 className="text-white font-semibold text-xl mb-4">
+            {t("footer.links.title")}
+          </h4>
+
           <ul className="space-y-2">
             <li>
               <Link to="/" className="hover:text-amber-600 transition-colors">
@@ -64,10 +74,14 @@ const Footer = () => {
 
         {/* Contact */}
         <div>
-          <h4 className="text-white font-semibold text-xl mb-4">{t("footer.contact.title")}</h4>
+          <h4 className="text-white font-semibold text-xl mb-4">
+            {t("footer.contact.title")}
+          </h4>
+
           <p className="mb-2">{t("footer.contact.location")}</p>
           <p className="mb-2">{t("footer.contact.phone")}</p>
           <p className="mb-2">{t("footer.contact.email")}</p>
+
           <p className="mt-6 text-sm text-stone-500 select-text">
             &copy; {new Date().getFullYear()} {t("footer.rights")}
           </p>
