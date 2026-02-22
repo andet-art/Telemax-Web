@@ -2,7 +2,8 @@
 const express = require("express");
 const router = express.Router();
 
-const { getProducts } = require("./controllers/productController");
+// IMPORTANT: case-sensitive path (Linux)
+const { getProducts } = require("../controllers/ProductController");
 
 // GET /api/products
 router.get("/", getProducts);
