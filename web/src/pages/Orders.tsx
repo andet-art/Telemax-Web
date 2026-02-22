@@ -6,17 +6,11 @@ import {
   ShoppingCart,
   Star,
   Eye,
-  Plus,
-  RotateCcw,
-  Search,
-  Filter,
   Heart,
   X,
   CheckCircle,
-  Clock,
   TrendingUp,
   Award,
-  ArrowUpDown,
   ArrowUp,
   ArrowDown,
   Sparkles,
@@ -73,7 +67,7 @@ const sortOptions = [
   { value: "price-high", label: "Price: High to Low", icon: ArrowDown },
   { value: "rating", label: "Highest Rated", icon: Award },
   { value: "newest", label: "Newest First", icon: Sparkles },
-  { value: "bestseller", label: "Best Sellers", icon: TrendingUp }
+  { value: "bestseller", label: "Best Sellers", icon: TrendingUp },
 ];
 
 /** Simple throttle */
@@ -82,35 +76,35 @@ const throttle = (fn: (...args: any[]) => void, wait = 100) => {
   return (...args: any[]) => {
     const now = Date.now();
     if (now - last >= wait) {
-      last = now; fn(...args);
+      last = now;
+      fn(...args);
     }
   };
 };
 
 // ✅ Build absolute image URL from DB values like "photos/3273001.png"
 function getApiOrigin(): string {
-  // Prefer axios baseURL if set, otherwise environment, otherwise current origin
   const base =
-    (api?.defaults?.baseURL || (import.meta as any)?.env?.VITE_API_URL || "").toString().trim();
+    (api?.defaults?.baseURL || (import.meta as any)?.env?.VITE_API_URL || "")
+      .toString()
+      .trim();
 
   if (!base) return window.location.origin;
 
-  // If base is ".../api" strip it, because images usually live at "/" not "/api"
   const noTrailing = base.replace(/\/+$/, "");
-  const stripped = noTrailing.replace(/\/api$/i, "");
+  const stripped = noTrailing.replace(/\/api$/i, ""); // if base is .../api
   return stripped || window.location.origin;
 }
 
 function resolveImageUrl(primary_photo?: string | null): string {
   const fallback =
-    "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=300&fit=crop";
+    "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&h=600&fit=crop";
 
   if (!primary_photo) return fallback;
 
   const raw = String(primary_photo).trim();
   if (!raw) return fallback;
 
-  // already absolute
   if (/^https?:\/\//i.test(raw)) return raw;
 
   const origin = getApiOrigin();
@@ -122,9 +116,11 @@ function resolveImageUrl(primary_photo?: string | null): string {
 function fmtMoney(amount: number, currency?: string) {
   const c = (currency || "EUR").toUpperCase();
   try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency: c }).format(amount);
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: c,
+    }).format(amount);
   } catch {
-    // if currency invalid
     return `${amount.toFixed(2)} ${c}`;
   }
 }
@@ -169,7 +165,9 @@ export default function EnhancedOrdersPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // UI state
-  const [activeSection, setActiveSection] = useState<"commercial" | "custom">("commercial");
+  const [activeSection, setActiveSection] = useState<"commercial" | "custom">(
+    "commercial"
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("featured");
@@ -181,7 +179,10 @@ export default function EnhancedOrdersPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedPipe, setSelectedPipe] = useState<any>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
   // Custom pipe builder (kept local; hook up to backend later if needed)
   const [selectedHead, setSelectedHead] = useState<any>(null);
@@ -202,15 +203,16 @@ export default function EnhancedOrdersPage() {
   useEffect(() => {
     const onScroll = throttle(() => {
       const current = window.scrollY;
-      const showNavbar = current < lastScrollY || current < 10;
-      setNavbarHidden(!showNavbar);
+      const showNavbarNow = current < lastScrollY || current < 10;
+      setNavbarHidden(!showNavbarNow);
       setLastScrollY(current);
     }, 120);
+
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [lastScrollY]);
 
-  // ✅ Fetch products from droplet: GET /api/products
+  // ✅ Fetch products
   useEffect(() => {
     let mounted = true;
 
@@ -221,15 +223,22 @@ export default function EnhancedOrdersPage() {
       4: "Luxury",
     };
 
-    (async () => {
+    const fetchProducts = async () => {
       try {
         setLoading(true);
+        setLoadError(null);
 
-        const res = await api.get<DbProduct[] | { data: DbProduct[] }>("/api/products");
+        // IMPORTANT:
+        // If api.defaults.baseURL already ends with "/api", then request should be "/products"
+        // If baseURL is just "http://host:4000", then request should be "/api/products"
+        const base = String(api?.defaults?.baseURL || "").replace(/\/+$/, "");
+        const usesApiPrefix = /\/api$/i.test(base);
+        const endpoint = usesApiPrefix ? "/products" : "/api/products";
+
+        const res = await api.get<DbProduct[] | { data: DbProduct[] }>(endpoint);
 
         if (!mounted) return;
 
-        // handle both direct array or {data:[...]}
         const rawList: DbProduct[] = Array.isArray((res as any).data)
           ? (res as any).data
           : ((res as any).data?.data ?? []);
@@ -237,7 +246,9 @@ export default function EnhancedOrdersPage() {
         const mapped: ApiProduct[] = (rawList ?? [])
           .filter((p) => {
             const active = p?.is_active;
-            return active === null || active === undefined ? true : Number(active) === 1;
+            return active === null || active === undefined
+              ? true
+              : Number(active) === 1;
           })
           .map((p) => {
             const currency = (p.currency || "EUR").toString().toUpperCase();
@@ -250,17 +261,16 @@ export default function EnhancedOrdersPage() {
               description: p.description ?? "",
               price: Number.isFinite(price) ? price : 0,
               currency,
-
-              // frontend-only extras
               image: resolveImageUrl(p.primary_photo),
+
               rating: 4.5,
               reviewCount: 0,
-              inStock: true, // if you add stock in DB later, map it here
+              inStock: true,
               featured: false,
               isNew: false,
               isBestseller: false,
               category: typeIdToCategory[Number(p.type_id)] || "Wood",
-              tags: [], // later you can build tags from type/subtype names
+              tags: [],
               specs: {
                 type_id: p.type_id,
                 subtype_id: p.subtype_id,
@@ -269,13 +279,14 @@ export default function EnhancedOrdersPage() {
           });
 
         setProducts(mapped);
-        setLoadError(null);
       } catch (e: any) {
         setLoadError(e?.message || "Failed to load products");
       } finally {
         if (mounted) setLoading(false);
       }
-    })();
+    };
+
+    fetchProducts();
 
     return () => {
       mounted = false;
@@ -283,11 +294,14 @@ export default function EnhancedOrdersPage() {
   }, []);
 
   // Toast
-  const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
-    setToast({ message, type });
-    const id = setTimeout(() => setToast(null), 2500);
-    return () => clearTimeout(id);
-  }, []);
+  const showToast = useCallback(
+    (message: string, type: "success" | "error" = "success") => {
+      setToast({ message, type });
+      const id = setTimeout(() => setToast(null), 2500);
+      return () => clearTimeout(id);
+    },
+    []
+  );
 
   /** ---------- DERIVED ---------- */
   const filteredAndSortedPipes = useMemo(() => {
@@ -297,9 +311,7 @@ export default function EnhancedOrdersPage() {
       .filter((p) => selectedCategory === "All" || p.category === selectedCategory)
       .filter((p) => {
         if (!term) return true;
-        const tags = (p.tags ?? []).map((t) => t.toLowerCase());
-
-        // ✅ include SKU in search
+        const tags = (p.tags ?? []).map((x) => x.toLowerCase());
         return (
           p.name.toLowerCase().includes(term) ||
           (p.sku ?? "").toLowerCase().includes(term) ||
@@ -310,26 +322,45 @@ export default function EnhancedOrdersPage() {
 
     const arr = filtered.slice();
     switch (sortBy) {
-      case "price-low": arr.sort((a, b) => (a.price ?? 0) - (b.price ?? 0)); break;
-      case "price-high": arr.sort((a, b) => (b.price ?? 0) - (a.price ?? 0)); break;
-      case "rating": arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)); break;
-      case "newest": arr.sort((a, b) => Number(b.isNew) - Number(a.isNew)); break;
-      case "bestseller": arr.sort((a, b) => Number(b.isBestseller) - Number(a.isBestseller)); break;
+      case "price-low":
+        arr.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+        break;
+      case "price-high":
+        arr.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+        break;
+      case "rating":
+        arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+        break;
+      case "newest":
+        arr.sort((a, b) => Number(b.isNew) - Number(a.isNew));
+        break;
+      case "bestseller":
+        arr.sort((a, b) => Number(b.isBestseller) - Number(a.isBestseller));
+        break;
       case "featured":
-      default: arr.sort((a, b) => Number(b.featured) - Number(a.featured));
+      default:
+        arr.sort((a, b) => Number(b.featured) - Number(a.featured));
     }
     return arr;
   }, [products, selectedCategory, searchTerm, sortBy]);
 
   /** ---------- FAVORITES / RECENT ---------- */
-  const toggleFavorite = useCallback((pipeId: string | number) => {
-    setFavorites((prev) => {
-      const adding = !prev.includes(pipeId);
-      const pipe = products.find((p) => p.id === pipeId);
-      if (pipe) showToast(adding ? `${pipe.name} added to favorites!` : `${pipe.name} removed from favorites`);
-      return adding ? [...prev, pipeId] : prev.filter((id) => id !== pipeId);
-    });
-  }, [products, showToast]);
+  const toggleFavorite = useCallback(
+    (pipeId: string | number) => {
+      setFavorites((prev) => {
+        const adding = !prev.includes(pipeId);
+        const pipe = products.find((p) => p.id === pipeId);
+        if (pipe)
+          showToast(
+            adding
+              ? `${pipe.name} added to favorites!`
+              : `${pipe.name} removed from favorites`
+          );
+        return adding ? [...prev, pipeId] : prev.filter((id) => id !== pipeId);
+      });
+    },
+    [products, showToast]
+  );
 
   const addToRecentlyViewed = useCallback((pipe: any) => {
     setRecentlyViewed((prev) => {
@@ -340,7 +371,11 @@ export default function EnhancedOrdersPage() {
 
   /** ---------- CUSTOM PIPE ---------- */
   const getCustomPipeTotal = useCallback(() => {
-    return (selectedHead?.price || 0) + (selectedRing?.price || 0) + (selectedTail?.price || 0);
+    return (
+      (selectedHead?.price || 0) +
+      (selectedRing?.price || 0) +
+      (selectedTail?.price || 0)
+    );
   }, [selectedHead, selectedRing, selectedTail]);
 
   const addCustomPipeToCart = useCallback(() => {
@@ -348,21 +383,31 @@ export default function EnhancedOrdersPage() {
       showToast("Please complete your design before adding to cart!", "error");
       return;
     }
-    const customPipe = {
+
+    // NOTE: keep in sync with your CartContext item shape
+    addToCart({
       id: `custom-${Date.now()}`,
-      type: "custom" as const,
+      type: "custom",
       name: customPipeName || "Custom Pipe",
-      head: selectedHead,
-      ring: selectedRing,
-      tail: selectedTail,
       price: getCustomPipeTotal(),
       quantity: 1,
       image: selectedHead.image,
       currency: "EUR",
-    };
-    addToCart(customPipe);
+      head: selectedHead,
+      ring: selectedRing,
+      tail: selectedTail,
+    } as any);
+
     showToast("Custom pipe added to cart! 🎉");
-  }, [selectedHead, selectedRing, selectedTail, customPipeName, getCustomPipeTotal, addToCart, showToast]);
+  }, [
+    selectedHead,
+    selectedRing,
+    selectedTail,
+    customPipeName,
+    getCustomPipeTotal,
+    addToCart,
+    showToast,
+  ]);
 
   const resetCustomPipe = useCallback(() => {
     setSelectedHead(null);
@@ -373,13 +418,34 @@ export default function EnhancedOrdersPage() {
     showToast("Custom pipe design reset!");
   }, [showToast]);
 
-  const nextStep = useCallback(() => setBuildStep((s) => Math.min(3, s + 1)), []);
-  const prevStep = useCallback(() => setBuildStep((s) => Math.max(1, s - 1)), []);
+  const handlePipeSelect = useCallback(
+    (pipe: any) => {
+      setSelectedPipe(pipe);
+      addToRecentlyViewed(pipe);
+    },
+    [addToRecentlyViewed]
+  );
 
-  const handlePipeSelect = useCallback((pipe: any) => {
-    setSelectedPipe(pipe);
-    addToRecentlyViewed(pipe);
-  }, [addToRecentlyViewed]);
+  // ✅ THIS removes the red underline: pass a strict cart payload (not "...pipe")
+  const addCommercialToCart = useCallback(
+    (pipe: ApiProduct) => {
+      if (!pipe.inStock) return;
+
+      addToCart({
+        id: pipe.id,
+        type: "commercial",
+        name: pipe.name,
+        price: Number(pipe.price ?? 0),
+        currency: pipe.currency ?? "EUR",
+        image: pipe.image,
+        sku: pipe.sku,
+        quantity: 1,
+      } as any);
+
+      showToast("Added to cart ✅");
+    },
+    [addToCart, showToast]
+  );
 
   /** ---------- UI ---------- */
   return (
@@ -403,17 +469,25 @@ export default function EnhancedOrdersPage() {
       />
 
       <AnimatePresence>
-        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
       </AnimatePresence>
 
-      {/* Cart */}
+      {/* Cart button */}
       <button
         onClick={() => navigate("/cart")}
         className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-xl bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black font-semibold hover:opacity-90 transition"
         aria-label="View Cart"
       >
         <ShoppingCart className="w-4 h-4" />
-        <span>{cartItemCount} – {fmtMoney(cartTotal, "EUR")}</span>
+        <span>
+          {cartItemCount} – {fmtMoney(cartTotal, "EUR")}
+        </span>
       </button>
 
       <main className="relative min-h-screen pt-20 sm:pt-28 pb-24 flex overflow-auto bg-[url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop')] bg-cover bg-center text-white font-serif">
@@ -446,7 +520,8 @@ export default function EnhancedOrdersPage() {
               Premium Tobacco Pipes ✨
             </motion.h1>
             <p className="text-base sm:text-lg md:text-xl text-stone-300 max-w-2xl mx-auto px-4">
-              Discover our exquisite collection of handcrafted pipes and create your perfect custom piece
+              Discover our exquisite collection of handcrafted pipes and create
+              your perfect custom piece
             </p>
           </motion.div>
 
@@ -459,131 +534,158 @@ export default function EnhancedOrdersPage() {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.5 }}
               >
-                {/* ... keep ALL your existing Search/Filters UI ... */}
-
                 {/* Products grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 max-w-7xl mx-auto">
-                  {!loading && !loadError && filteredAndSortedPipes.map((pipe, idx) => (
-                    <motion.div
-                      key={pipe.id}
-                      className="group bg-gradient-to-br from-[#1a120b]/95 via-[#1a120b]/90 to-[#2a1d13]/95 backdrop-blur-lg border border-[#2a1d13]/50 rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-xl hover:shadow-2xl hover:shadow-[#c9a36a]/10 transition-all overflow-hidden relative"
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.06, duration: 0.5 }}
-                      viewport={{ once: true }}
-                      whileHover={{ y: -5, borderColor: "rgba(201,163,106,.4)" }}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-[#c9a36a]/0 via-[#c9a36a]/5 to-[#c9a36a]/0 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+                  {!loading &&
+                    !loadError &&
+                    filteredAndSortedPipes.map((pipe, idx) => (
+                      <motion.div
+                        key={pipe.id}
+                        className="group bg-gradient-to-br from-[#1a120b]/95 via-[#1a120b]/90 to-[#2a1d13]/95 backdrop-blur-lg border border-[#2a1d13]/50 rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-xl hover:shadow-2xl hover:shadow-[#c9a36a]/10 transition-all overflow-hidden relative"
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.06, duration: 0.5 }}
+                        viewport={{ once: true }}
+                        whileHover={{ y: -5, borderColor: "rgba(201,163,106,.4)" }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#c9a36a]/0 via-[#c9a36a]/5 to-[#c9a36a]/0 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
 
-                      <div className="relative z-10">
-                        <div className="relative overflow-hidden rounded-xl mb-4">
-                          <img
-                            src={pipe.image}
-                            alt={pipe.name}
-                            className="w-full h-40 sm:h-48 object-cover group-hover:scale-110 transition-transform duration-500"
-                            loading="lazy"
-                          />
-                          <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs border border-white/10">
-                            SKU: <span className="text-[#c9a36a] font-semibold">{pipe.sku || "—"}</span>
-                          </div>
+                        <div className="relative z-10">
+                          <div className="relative overflow-hidden rounded-xl mb-4">
+                            <img
+                              src={pipe.image}
+                              alt={pipe.name}
+                              className="w-full h-40 sm:h-48 object-cover group-hover:scale-110 transition-transform duration-500"
+                              loading="lazy"
+                            />
 
-                          <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
-                            <motion.button
-                              onClick={(e) => { e.stopPropagation(); toggleFavorite(pipe.id); }}
-                              className="bg-black/70 backdrop-blur-sm p-2 rounded-full hover:bg-black/80"
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              aria-label="Toggle favorite"
-                            >
-                              <Heart
-                                className={`w-4 h-4 ${favorites.includes(pipe.id) ? "text-red-500 fill-current" : "text-white"}`}
-                              />
-                            </motion.button>
-
-                            <div className="bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-lg">
-                              <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                              <span className="text-xs font-medium">{pipe.rating ?? 4.5}</span>
-                              <span className="text-xs text-stone-400">({pipe.reviewCount ?? 0})</span>
-                            </div>
-                          </div>
-
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <motion.button
-                              onClick={() => handlePipeSelect(pipe)}
-                              className="bg-[#c9a36a] hover:bg-[#d4b173] text-black px-5 py-3 rounded-lg font-semibold flex items-center gap-2 shadow-lg"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              <Eye className="w-4 h-4" />
-                              Quick View
-                            </motion.button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <div>
-                            <h3 className="text-lg sm:text-xl font-bold mb-2 line-clamp-1 group-hover:text-[#c9a36a] transition-colors">
-                              {pipe.name}
-                            </h3>
-                            <p className="text-xs sm:text-sm text-stone-400 mb-3 line-clamp-2 leading-relaxed">
-                              {pipe.description}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl sm:text-2xl font-bold text-[#c9a36a]">
-                                {fmtMoney(Number(pipe.price ?? 0), pipe.currency)}
+                            <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs border border-white/10">
+                              SKU:{" "}
+                              <span className="text-[#c9a36a] font-semibold">
+                                {pipe.sku || "—"}
                               </span>
-                              {pipe.originalPrice && (
-                                <span className="text-sm text-stone-500 line-through">
-                                  {fmtMoney(Number(pipe.originalPrice), pipe.currency)}
-                                </span>
-                              )}
                             </div>
 
-                            <span
-                              className={`inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full ${
-                                pipe.inStock
-                                  ? "bg-green-800/30 text-green-300 border border-green-700/30"
-                                  : "bg-red-800/30 text-red-300 border border-red-700/30"
-                              }`}
-                            >
-                              <span className={`w-2 h-2 rounded-full ${pipe.inStock ? "bg-green-400" : "bg-red-400"}`} />
-                              {pipe.inStock ? "In Stock" : "Out of Stock"}
-                            </span>
+                            <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
+                              <motion.button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(pipe.id);
+                                }}
+                                className="bg-black/70 backdrop-blur-sm p-2 rounded-full hover:bg-black/80"
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                aria-label="Toggle favorite"
+                              >
+                                <Heart
+                                  className={`w-4 h-4 ${
+                                    favorites.includes(pipe.id)
+                                      ? "text-red-500 fill-current"
+                                      : "text-white"
+                                  }`}
+                                />
+                              </motion.button>
+
+                              <div className="bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-lg">
+                                <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                                <span className="text-xs font-medium">
+                                  {pipe.rating ?? 4.5}
+                                </span>
+                                <span className="text-xs text-stone-400">
+                                  ({pipe.reviewCount ?? 0})
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <motion.button
+                                onClick={() => handlePipeSelect(pipe)}
+                                className="bg-[#c9a36a] hover:bg-[#d4b173] text-black px-5 py-3 rounded-lg font-semibold flex items-center gap-2 shadow-lg"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                <Eye className="w-4 h-4" />
+                                Quick View
+                              </motion.button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div>
+                              <h3 className="text-lg sm:text-xl font-bold mb-2 line-clamp-1 group-hover:text-[#c9a36a] transition-colors">
+                                {pipe.name}
+                              </h3>
+                              <p className="text-xs sm:text-sm text-stone-400 mb-3 line-clamp-2 leading-relaxed">
+                                {pipe.description}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xl sm:text-2xl font-bold text-[#c9a36a]">
+                                  {fmtMoney(Number(pipe.price ?? 0), pipe.currency)}
+                                </span>
+                                {pipe.originalPrice && (
+                                  <span className="text-sm text-stone-500 line-through">
+                                    {fmtMoney(Number(pipe.originalPrice), pipe.currency)}
+                                  </span>
+                                )}
+                              </div>
+
+                              <span
+                                className={`inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full ${
+                                  pipe.inStock
+                                    ? "bg-green-800/30 text-green-300 border border-green-700/30"
+                                    : "bg-red-800/30 text-red-300 border border-red-700/30"
+                                }`}
+                              >
+                                <span
+                                  className={`w-2 h-2 rounded-full ${
+                                    pipe.inStock ? "bg-green-400" : "bg-red-400"
+                                  }`}
+                                />
+                                {pipe.inStock ? "In Stock" : "Out of Stock"}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="relative z-10 flex gap-3 mt-5">
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => addToCart({ ...pipe, type: "commercial" })}
-                          disabled={!pipe.inStock}
-                          className={`flex-1 px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg ${
-                            pipe.inStock
-                              ? "bg-gradient-to-r from-[#c9a36a] to-[#d4b173] hover:from-[#d4b173] hover:to-[#e5c584] text-black shadow-[#c9a36a]/25"
-                              : "bg-stone-700/50 text-stone-400 cursor-not-allowed"
-                          }`}
-                        >
-                          <ShoppingCart className="w-4 h-4" />
-                          <span className="text-sm">{pipe.inStock ? "Add to Cart" : "Sold Out"}</span>
-                        </motion.button>
+                        <div className="relative z-10 flex gap-3 mt-5">
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => addCommercialToCart(pipe)}
+                            disabled={!pipe.inStock}
+                            className={`flex-1 px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg ${
+                              pipe.inStock
+                                ? "bg-gradient-to-r from-[#c9a36a] to-[#d4b173] hover:from-[#d4b173] hover:to-[#e5c584] text-black shadow-[#c9a36a]/25"
+                                : "bg-stone-700/50 text-stone-400 cursor-not-allowed"
+                            }`}
+                          >
+                            <ShoppingCart className="w-4 h-4" />
+                            <span className="text-sm">
+                              {pipe.inStock ? "Add to Cart" : "Sold Out"}
+                            </span>
+                          </motion.button>
 
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => handlePipeSelect(pipe)}
-                          className="bg-gradient-to-r from-stone-800/80 to-stone-700/80 hover:from-stone-700/80 hover:to-stone-600/80 px-5 py-3.5 rounded-xl border border-[#c9a36a]/20 hover:border-[#c9a36a]/40 shadow-lg"
-                        >
-                          <Eye className="w-4 h-4 text-[#c9a36a]" />
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  ))}
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handlePipeSelect(pipe)}
+                            className="bg-gradient-to-r from-stone-800/80 to-stone-700/80 hover:from-stone-700/80 hover:to-stone-600/80 px-5 py-3.5 rounded-xl border border-[#c9a36a]/20 hover:border-[#c9a36a]/40 shadow-lg"
+                          >
+                            <Eye className="w-4 h-4 text-[#c9a36a]" />
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    ))}
                 </div>
+
+                {loading && (
+                  <div className="text-center text-stone-300 py-10">
+                    Loading products...
+                  </div>
+                )}
 
                 {loadError && (
                   <div className="text-center text-red-300 py-10">
@@ -593,7 +695,7 @@ export default function EnhancedOrdersPage() {
               </motion.div>
             )}
 
-            {/* CUSTOM BUILDER stays as you had it */}
+            {/* CUSTOM BUILDER */}
             {activeSection === "custom" && (
               <motion.div
                 key="custom"
@@ -606,9 +708,17 @@ export default function EnhancedOrdersPage() {
                   <div className="text-center mt-6">
                     <motion.button
                       onClick={addCustomPipeToCart}
-                      disabled={!customPipeName.trim() || !selectedHead || !selectedRing || !selectedTail}
+                      disabled={
+                        !customPipeName.trim() ||
+                        !selectedHead ||
+                        !selectedRing ||
+                        !selectedTail
+                      }
                       className={`px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl ${
-                        customPipeName.trim() && selectedHead && selectedRing && selectedTail
+                        customPipeName.trim() &&
+                        selectedHead &&
+                        selectedRing &&
+                        selectedTail
                           ? "bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black"
                           : "bg-stone-700/50 text-stone-400 cursor-not-allowed"
                       }`}
