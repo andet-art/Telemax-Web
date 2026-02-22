@@ -1,3 +1,4 @@
+// src/pages/Orders.tsx
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,6 +36,13 @@ type DbProduct = {
   is_active: number | boolean | null; // 1/0
   created_at?: string;
   updated_at?: string;
+};
+
+type ProductsApiResponse = {
+  success: boolean;
+  count?: number;
+  data: DbProduct[];
+  message?: string;
 };
 
 type ApiProduct = {
@@ -212,7 +220,7 @@ export default function EnhancedOrdersPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [lastScrollY]);
 
-  // ✅ Fetch products
+  // ✅ Fetch products (matches your backend response: { success, count, data })
   useEffect(() => {
     let mounted = true;
 
@@ -228,20 +236,21 @@ export default function EnhancedOrdersPage() {
         setLoading(true);
         setLoadError(null);
 
-        // IMPORTANT:
-        // If api.defaults.baseURL already ends with "/api", then request should be "/products"
-        // If baseURL is just "http://host:4000", then request should be "/api/products"
         const base = String(api?.defaults?.baseURL || "").replace(/\/+$/, "");
         const usesApiPrefix = /\/api$/i.test(base);
         const endpoint = usesApiPrefix ? "/products" : "/api/products";
 
-        const res = await api.get<DbProduct[] | { data: DbProduct[] }>(endpoint);
+        const res = await api.get<ProductsApiResponse>(endpoint);
 
         if (!mounted) return;
 
-        const rawList: DbProduct[] = Array.isArray((res as any).data)
-          ? (res as any).data
-          : ((res as any).data?.data ?? []);
+        if (!res.data?.success) {
+          throw new Error(res.data?.message || "Products API failed");
+        }
+
+        const rawList: DbProduct[] = Array.isArray(res.data?.data)
+          ? res.data.data
+          : [];
 
         const mapped: ApiProduct[] = (rawList ?? [])
           .filter((p) => {
@@ -253,6 +262,12 @@ export default function EnhancedOrdersPage() {
           .map((p) => {
             const currency = (p.currency || "EUR").toString().toUpperCase();
             const price = Number(p.price ?? 0);
+
+            // OPTIONAL: mark "new" by created_at (last 14 days)
+            const createdMs = p.created_at ? new Date(p.created_at).getTime() : 0;
+            const isNew =
+              createdMs > 0 &&
+              Date.now() - createdMs < 14 * 24 * 60 * 60 * 1000;
 
             return {
               id: p.id,
@@ -267,7 +282,7 @@ export default function EnhancedOrdersPage() {
               reviewCount: 0,
               inStock: true,
               featured: false,
-              isNew: false,
+              isNew,
               isBestseller: false,
               category: typeIdToCategory[Number(p.type_id)] || "Wood",
               tags: [],
@@ -332,14 +347,17 @@ export default function EnhancedOrdersPage() {
         arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
         break;
       case "newest":
-        arr.sort((a, b) => Number(b.isNew) - Number(a.isNew));
+        arr.sort((a, b) => Number(Boolean(b.isNew)) - Number(Boolean(a.isNew)));
         break;
       case "bestseller":
-        arr.sort((a, b) => Number(b.isBestseller) - Number(a.isBestseller));
+        arr.sort(
+          (a, b) =>
+            Number(Boolean(b.isBestseller)) - Number(Boolean(a.isBestseller))
+        );
         break;
       case "featured":
       default:
-        arr.sort((a, b) => Number(b.featured) - Number(a.featured));
+        arr.sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)));
     }
     return arr;
   }, [products, selectedCategory, searchTerm, sortBy]);
@@ -384,7 +402,6 @@ export default function EnhancedOrdersPage() {
       return;
     }
 
-    // NOTE: keep in sync with your CartContext item shape
     addToCart({
       id: `custom-${Date.now()}`,
       type: "custom",
@@ -426,7 +443,7 @@ export default function EnhancedOrdersPage() {
     [addToRecentlyViewed]
   );
 
-  // ✅ THIS removes the red underline: pass a strict cart payload (not "...pipe")
+  // ✅ Strict cart payload
   const addCommercialToCart = useCallback(
     (pipe: ApiProduct) => {
       if (!pipe.inStock) return;
@@ -523,6 +540,45 @@ export default function EnhancedOrdersPage() {
               Discover our exquisite collection of handcrafted pipes and create
               your perfect custom piece
             </p>
+
+            {/* Simple top controls (optional; no pagination; ALL products show) */}
+            <div className="mt-6 max-w-5xl mx-auto flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-center px-2">
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, SKU, description…"
+                className="w-full md:w-[420px] px-4 py-3 rounded-xl bg-black/50 border border-white/10 outline-none focus:border-[#c9a36a]/50"
+              />
+
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full md:w-[220px] px-4 py-3 rounded-xl bg-black/50 border border-white/10 outline-none focus:border-[#c9a36a]/50"
+              >
+                {categoriesList.map((c) => (
+                  <option key={c} value={c} className="bg-black">
+                    {c}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full md:w-[260px] px-4 py-3 rounded-xl bg-black/50 border border-white/10 outline-none focus:border-[#c9a36a]/50"
+              >
+                {sortOptions.map((o) => (
+                  <option key={o.value} value={o.value} className="bg-black">
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mt-3 text-sm text-stone-400">
+              Showing <span className="text-[#c9a36a] font-semibold">{filteredAndSortedPipes.length}</span>{" "}
+              products
+            </div>
           </motion.div>
 
           <AnimatePresence mode="wait">
@@ -534,7 +590,7 @@ export default function EnhancedOrdersPage() {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.5 }}
               >
-                {/* Products grid */}
+                {/* Products grid (ALL products, no slicing) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 max-w-7xl mx-auto">
                   {!loading &&
                     !loadError &&
@@ -544,18 +600,19 @@ export default function EnhancedOrdersPage() {
                         className="group bg-gradient-to-br from-[#1a120b]/95 via-[#1a120b]/90 to-[#2a1d13]/95 backdrop-blur-lg border border-[#2a1d13]/50 rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-xl hover:shadow-2xl hover:shadow-[#c9a36a]/10 transition-all overflow-hidden relative"
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.06, duration: 0.5 }}
+                        transition={{ delay: idx * 0.03, duration: 0.45 }}
                         viewport={{ once: true }}
                         whileHover={{ y: -5, borderColor: "rgba(201,163,106,.4)" }}
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-[#c9a36a]/0 via-[#c9a36a]/5 to-[#c9a36a]/0 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
 
                         <div className="relative z-10">
-                          <div className="relative overflow-hidden rounded-xl mb-4">
+                          {/* ✅ TRUE 4:3 image box */}
+                          <div className="relative overflow-hidden rounded-xl mb-4 aspect-[4/3] bg-black/30">
                             <img
                               src={pipe.image}
                               alt={pipe.name}
-                              className="w-full h-40 sm:h-48 object-cover group-hover:scale-110 transition-transform duration-500"
+                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                               loading="lazy"
                             />
 
@@ -695,7 +752,7 @@ export default function EnhancedOrdersPage() {
               </motion.div>
             )}
 
-            {/* CUSTOM BUILDER */}
+            {/* CUSTOM BUILDER (kept minimal here) */}
             {activeSection === "custom" && (
               <motion.div
                 key="custom"
@@ -735,6 +792,13 @@ export default function EnhancedOrdersPage() {
                     >
                       <ShoppingCart className="w-4 h-4" />
                       View Cart
+                    </button>
+
+                    <button
+                      onClick={resetCustomPipe}
+                      className="block mx-auto mt-4 text-sm text-stone-400 hover:text-stone-200 transition"
+                    >
+                      Reset builder
                     </button>
                   </div>
                 </div>
