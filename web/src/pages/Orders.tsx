@@ -1,5 +1,5 @@
 // src/pages/Orders.tsx
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -183,9 +183,7 @@ export default function EnhancedOrdersPage() {
   const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [navbarHidden, setNavbarHidden] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const [selectedPipe, setSelectedPipe] = useState<any>(null);
   const [toast, setToast] = useState<{
     message: string;
@@ -208,17 +206,19 @@ export default function EnhancedOrdersPage() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  // ✅ FIXED: stable scroll listener (no re-bind every scroll)
+  const lastScrollYRef = useRef(0);
   useEffect(() => {
     const onScroll = throttle(() => {
       const current = window.scrollY;
-      const showNavbarNow = current < lastScrollY || current < 10;
+      const showNavbarNow = current < lastScrollYRef.current || current < 10;
       setNavbarHidden(!showNavbarNow);
-      setLastScrollY(current);
+      lastScrollYRef.current = current;
     }, 120);
 
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [lastScrollY]);
+  }, []);
 
   // ✅ Fetch products (matches your backend response: { success, count, data })
   useEffect(() => {
@@ -318,12 +318,23 @@ export default function EnhancedOrdersPage() {
     []
   );
 
-  /** ---------- DERIVED ---------- */
+  /** ---------- DERIVED (FIXED: normalize category + sort so Sidebar cannot break it) ---------- */
   const filteredAndSortedPipes = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
+    // ✅ category normalization
+    const normalizedCategory = categoriesList.includes(selectedCategory)
+      ? selectedCategory
+      : "All";
+
+    // ✅ sort normalization
+    const allowedSort = new Set(sortOptions.map((s) => s.value));
+    const normalizedSort = allowedSort.has(sortBy) ? sortBy : "featured";
+
     let filtered = products
-      .filter((p) => selectedCategory === "All" || p.category === selectedCategory)
+      .filter(
+        (p) => normalizedCategory === "All" || p.category === normalizedCategory
+      )
       .filter((p) => {
         if (!term) return true;
         const tags = (p.tags ?? []).map((x) => x.toLowerCase());
@@ -336,7 +347,7 @@ export default function EnhancedOrdersPage() {
       });
 
     const arr = filtered.slice();
-    switch (sortBy) {
+    switch (normalizedSort) {
       case "price-low":
         arr.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
         break;
@@ -357,8 +368,11 @@ export default function EnhancedOrdersPage() {
         break;
       case "featured":
       default:
-        arr.sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)));
+        arr.sort(
+          (a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured))
+        );
     }
+
     return arr;
   }, [products, selectedCategory, searchTerm, sortBy]);
 
@@ -541,7 +555,7 @@ export default function EnhancedOrdersPage() {
               your perfect custom piece
             </p>
 
-            {/* Simple top controls (optional; no pagination; ALL products show) */}
+            {/* Top controls */}
             <div className="mt-6 max-w-5xl mx-auto flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-center px-2">
               <input
                 value={searchTerm}
@@ -576,7 +590,10 @@ export default function EnhancedOrdersPage() {
             </div>
 
             <div className="mt-3 text-sm text-stone-400">
-              Showing <span className="text-[#c9a36a] font-semibold">{filteredAndSortedPipes.length}</span>{" "}
+              Showing{" "}
+              <span className="text-[#c9a36a] font-semibold">
+                {filteredAndSortedPipes.length}
+              </span>{" "}
               products
             </div>
           </motion.div>
@@ -590,7 +607,7 @@ export default function EnhancedOrdersPage() {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.5 }}
               >
-                {/* Products grid (ALL products, no slicing) */}
+                {/* Products grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 max-w-7xl mx-auto">
                   {!loading &&
                     !loadError &&
@@ -684,7 +701,10 @@ export default function EnhancedOrdersPage() {
                                 </span>
                                 {pipe.originalPrice && (
                                   <span className="text-sm text-stone-500 line-through">
-                                    {fmtMoney(Number(pipe.originalPrice), pipe.currency)}
+                                    {fmtMoney(
+                                      Number(pipe.originalPrice),
+                                      pipe.currency
+                                    )}
                                   </span>
                                 )}
                               </div>

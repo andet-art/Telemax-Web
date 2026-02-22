@@ -1,3 +1,4 @@
+// server.js
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -12,6 +13,7 @@ const userRoutes = require("./routes/userRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const productRoutes = require("./routes/ProductRoutes");
 
+// Error handler
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -46,7 +48,7 @@ app.use(express.urlencoded({ extended: true }));
 
 /* ================================
    STATIC IMAGES
-   URL: http://YOUR_IP:5001/photos/3273001.png
+   URL: http://YOUR_IP:4000/photos/3273001.png
 ================================ */
 app.use("/photos", express.static(path.join(__dirname, "public/photos")));
 
@@ -56,7 +58,7 @@ app.use("/photos", express.static(path.join(__dirname, "public/photos")));
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "TelemaxWeb API running",
+    message: "TelemaxWeb API running on port 4000",
   });
 });
 
@@ -69,7 +71,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/products", productRoutes);
 
 /* ================================
-   404
+   404 HANDLER
 ================================ */
 app.use((req, res) => {
   res.status(404).json({
@@ -86,7 +88,7 @@ app.use(errorHandler);
 /* ================================
    START SERVER
 ================================ */
-const PORT = process.env.PORT || 5001;
+const PORT = 4000; // fixed port 4000 to avoid confusion
 
 app.listen(PORT, () => {
   console.log(`✓ Server running on port ${PORT}`);
