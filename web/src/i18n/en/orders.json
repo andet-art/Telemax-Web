@@ -1,0 +1,48 @@
+{
+  "orders": {
+    "title": "Premium Tobacco Pipes ✨",
+    "subtitle": "Discover our exquisite collection of handcrafted pipes and create your perfect custom piece",
+    "showing": "Showing",
+    "products": "products",
+    "searchPlaceholder": "Search by name, SKU, description…",
+    "loading": "Loading products...",
+    "sort": {
+      "priceHigh": "Price: High to Low",
+      "priceLow": "Price: Low to High"
+    },
+    "actions": {
+      "addToCart": "Add to Cart",
+      "buildYourOwn": "Build your own pipe",
+      "backToShop": "Back to shop",
+      "confirmAdd": "Confirm & Add to Cart",
+      "reset": "Reset",
+      "viewCart": "View Cart"
+    },
+    "errors": {
+      "failedPrefix": "Failed to load products:",
+      "loadFailed": "Failed to load products"
+    },
+    "toasts": {
+      "added": "Added to cart ✅",
+      "reset": "Custom pipe design reset!",
+      "completeDesign": "Please complete your design before adding to cart!",
+      "customAdded": "Custom pipe added to cart! 🎉"
+    },
+    "custom": {
+      "title": "Build your own pipe",
+      "subtitle": "Name your design and confirm when you're ready",
+      "defaultName": "Custom Pipe",
+      "nameLabel": "Custom pipe name",
+      "namePlaceholder": "e.g. Royal Walnut",
+      "total": "Total:",
+      "noteTitle": "Builder status",
+      "noteBody": "The part selectors can be connected to your backend later. For now, this screen is ready and translated.",
+      "parts": {
+        "head": "Head",
+        "ring": "Ring",
+        "tail": "Tail"
+      },
+      "todo": "TODO: connect part pickers (head/ring/tail) to your API data."
+    }
+  }
+}

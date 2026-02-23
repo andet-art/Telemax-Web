@@ -1,22 +1,10 @@
 // src/pages/Orders.tsx
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import {
-  ShoppingCart,
-  Star,
-  Eye,
-  Heart,
-  X,
-  CheckCircle,
-  TrendingUp,
-  Award,
-  ArrowUp,
-  ArrowDown,
-  Sparkles,
-} from "lucide-react";
-import Sidebar from "@/components/Sidebar";
+import { useTranslation } from "react-i18next";
+import { ShoppingCart, X, CheckCircle } from "lucide-react";
+
 import { useCart } from "../context/CartContext";
 import { api } from "@/lib/api";
 
@@ -29,11 +17,11 @@ type DbProduct = {
   name: string;
   description: string | null;
   price: number | string | null;
-  currency: string | null; // e.g. "EUR"
-  primary_photo: string | null; // e.g. "photos/3273001.png"
+  currency: string | null;
+  primary_photo: string | null;
   type_id: number | null;
   subtype_id: number | null;
-  is_active: number | boolean | null; // 1/0
+  is_active: number | boolean | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -52,31 +40,26 @@ type ApiProduct = {
   description?: string;
   price: number;
   currency?: string;
-
-  originalPrice?: number | null;
   image?: string;
-
-  rating?: number;
-  reviewCount?: number;
-  inStock?: boolean;
-  featured?: boolean;
-  isNew?: boolean;
-  isBestseller?: boolean;
-
-  category?: string;
-  tags?: string[];
-  specs?: Record<string, any>;
+  type_id?: number | null;
+  typeName?: string;
 };
 
-const categoriesList = ["All", "Wood", "Metal", "Hybrid", "Luxury"];
-const sortOptions = [
-  { value: "featured", label: "Featured First", icon: Star },
-  { value: "price-low", label: "Price: Low to High", icon: ArrowUp },
-  { value: "price-high", label: "Price: High to Low", icon: ArrowDown },
-  { value: "rating", label: "Highest Rated", icon: Award },
-  { value: "newest", label: "Newest First", icon: Sparkles },
-  { value: "bestseller", label: "Best Sellers", icon: TrendingUp },
-];
+/** catalog_types table */
+type CatalogType = {
+  id: number;
+  name: string;
+  sort_order?: number | null;
+  created_at?: string;
+};
+
+/** For flexible APIs */
+type GenericApiResponse<T> = {
+  success?: boolean;
+  data?: T;
+  message?: string;
+  count?: number;
+};
 
 /** Simple throttle */
 const throttle = (fn: (...args: any[]) => void, wait = 100) => {
@@ -92,22 +75,24 @@ const throttle = (fn: (...args: any[]) => void, wait = 100) => {
 
 // ✅ Build absolute image URL from DB values like "photos/3273001.png"
 function getApiOrigin(): string {
-  const base =
-    (api?.defaults?.baseURL || (import.meta as any)?.env?.VITE_API_URL || "")
-      .toString()
-      .trim();
+  const base = (
+    api?.defaults?.baseURL ||
+    (import.meta as any)?.env?.VITE_API_URL ||
+    ""
+  )
+    .toString()
+    .trim();
 
   if (!base) return window.location.origin;
 
   const noTrailing = base.replace(/\/+$/, "");
-  const stripped = noTrailing.replace(/\/api$/i, ""); // if base is .../api
+  const stripped = noTrailing.replace(/\/api$/i, "");
   return stripped || window.location.origin;
 }
 
 function resolveImageUrl(primary_photo?: string | null): string {
   const fallback =
     "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&h=600&fit=crop";
-
   if (!primary_photo) return fallback;
 
   const raw = String(primary_photo).trim();
@@ -120,7 +105,7 @@ function resolveImageUrl(primary_photo?: string | null): string {
   return `${origin}${path}`;
 }
 
-// ✅ currency-aware display (uses product.currency)
+// ✅ currency-aware display
 function fmtMoney(amount: number, currency?: string) {
   const c = (currency || "EUR").toUpperCase();
   try {
@@ -162,7 +147,32 @@ const Toast = ({
   </motion.div>
 );
 
-export default function EnhancedOrdersPage() {
+async function tryGetFirst<T>(paths: string[]) {
+  const base = String(api?.defaults?.baseURL || "").replace(/\/+$/, "");
+  const usesApiPrefix = /\/api$/i.test(base);
+
+  const normalized = paths.map((p) => {
+    // if baseURL already ends with /api, calling "/api/xxx" becomes "/api/api/xxx"
+    // so if usesApiPrefix, strip leading "/api" in candidates.
+    if (usesApiPrefix) return p.replace(/^\/api\b/i, "");
+    return p;
+  });
+
+  let lastErr: any = null;
+
+  for (const p of normalized) {
+    try {
+      const res = await api.get(p);
+      return res;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+
+  throw lastErr;
+}
+
+export default function OrdersPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { addToCart, cartTotal, cartItemCount } = useCart();
@@ -172,42 +182,38 @@ export default function EnhancedOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  // ✅ Types from DB (catalog_types)
+  const [types, setTypes] = useState<CatalogType[]>([]);
+  const [typesError, setTypesError] = useState<string | null>(null);
+
   // UI state
-  const [activeSection, setActiveSection] = useState<"commercial" | "custom">(
-    "commercial"
-  );
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [sortBy, setSortBy] = useState("featured");
-  const [favorites, setFavorites] = useState<(string | number)[]>([]);
-  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [selectedType, setSelectedType] = useState<string>("All"); // holds type name
+  const [sortBy, setSortBy] = useState<"price-high" | "price-low">("price-high");
+
+  // Navbar hide behavior
   const [navbarHidden, setNavbarHidden] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [selectedPipe, setSelectedPipe] = useState<any>(null);
+  const lastScrollYRef = useRef(0);
+
+  // Photo modal
+  const [selectedPipe, setSelectedPipe] = useState<ApiProduct | null>(null);
+
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
 
-  // Custom pipe builder (kept local; hook up to backend later if needed)
-  const [selectedHead, setSelectedHead] = useState<any>(null);
-  const [selectedRing, setSelectedRing] = useState<any>(null);
-  const [selectedTail, setSelectedTail] = useState<any>(null);
-  const [customPipeName, setCustomPipeName] = useState("");
-  const [previewMode, setPreviewMode] = useState(false);
-  const [buildStep, setBuildStep] = useState(1);
+  // Toast
+  const showToast = useCallback(
+    (message: string, type: "success" | "error" = "success") => {
+      setToast({ message, type });
+      const id = setTimeout(() => setToast(null), 2200);
+      return () => clearTimeout(id);
+    },
+    []
+  );
 
   /** ---------- EFFECTS ---------- */
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  // ✅ FIXED: stable scroll listener (no re-bind every scroll)
-  const lastScrollYRef = useRef(0);
   useEffect(() => {
     const onScroll = throttle(() => {
       const current = window.scrollY;
@@ -220,39 +226,95 @@ export default function EnhancedOrdersPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // ✅ Fetch products (matches your backend response: { success, count, data })
+  /** ---------- FETCH TYPES (catalog_types) ---------- */
   useEffect(() => {
     let mounted = true;
 
-    const typeIdToCategory: Record<number, string> = {
-      1: "Wood",
-      2: "Metal",
-      3: "Hybrid",
-      4: "Luxury",
+    const fetchTypes = async () => {
+      try {
+        setTypesError(null);
+
+        // Try common endpoints (adjust if your backend uses a different one)
+        const res = await tryGetFirst<GenericApiResponse<CatalogType[]>>([
+          "/api/catalog-types",
+          "/api/catalog_types",
+          "/api/catalog/types",
+          "/api/types",
+          "/catalog-types",
+          "/catalog_types",
+          "/catalog/types",
+          "/types",
+        ]);
+
+        if (!mounted) return;
+
+        const body: any = res?.data;
+
+        // Accept either:
+        // 1) { success: true, data: [...] }
+        // 2) { data: [...] }
+        // 3) [...] (raw array)
+        let list: any = Array.isArray(body) ? body : body?.data;
+
+        if (!Array.isArray(list)) list = [];
+
+        const cleaned: CatalogType[] = list
+          .filter((x: any) => x && (x.id || x.id === 0) && x.name)
+          .map((x: any) => ({
+            id: Number(x.id),
+            name: String(x.name),
+            sort_order:
+              x.sort_order === null || x.sort_order === undefined
+                ? null
+                : Number(x.sort_order),
+            created_at: x.created_at ? String(x.created_at) : undefined,
+          }))
+          .sort((a, b) => {
+            const ao = a.sort_order ?? 999999;
+            const bo = b.sort_order ?? 999999;
+            if (ao !== bo) return ao - bo;
+            return a.name.localeCompare(b.name);
+          });
+
+        setTypes(cleaned);
+      } catch (e: any) {
+        if (!mounted) return;
+        setTypesError(e?.message || "Failed to load types");
+        setTypes([]); // fallback to All only
+      }
     };
+
+    fetchTypes();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /** ---------- FETCH PRODUCTS ---------- */
+  useEffect(() => {
+    let mounted = true;
 
     const fetchProducts = async () => {
       try {
         setLoading(true);
         setLoadError(null);
 
-        const base = String(api?.defaults?.baseURL || "").replace(/\/+$/, "");
-        const usesApiPrefix = /\/api$/i.test(base);
-        const endpoint = usesApiPrefix ? "/products" : "/api/products";
-
-        const res = await api.get<ProductsApiResponse>(endpoint);
+        const res = await tryGetFirst<ProductsApiResponse>([
+          "/api/products",
+          "/products",
+        ]);
 
         if (!mounted) return;
 
-        if (!res.data?.success) {
-          throw new Error(res.data?.message || "Products API failed");
+        const body: ProductsApiResponse = res.data;
+
+        if (!body?.success) {
+          throw new Error(body?.message || "Products API failed");
         }
 
-        const rawList: DbProduct[] = Array.isArray(res.data?.data)
-          ? res.data.data
-          : [];
+        const rawList: DbProduct[] = Array.isArray(body?.data) ? body.data : [];
 
-        const mapped: ApiProduct[] = (rawList ?? [])
+        const mapped: ApiProduct[] = rawList
           .filter((p) => {
             const active = p?.is_active;
             return active === null || active === undefined
@@ -263,12 +325,6 @@ export default function EnhancedOrdersPage() {
             const currency = (p.currency || "EUR").toString().toUpperCase();
             const price = Number(p.price ?? 0);
 
-            // OPTIONAL: mark "new" by created_at (last 14 days)
-            const createdMs = p.created_at ? new Date(p.created_at).getTime() : 0;
-            const isNew =
-              createdMs > 0 &&
-              Date.now() - createdMs < 14 * 24 * 60 * 60 * 1000;
-
             return {
               id: p.id,
               sku: String(p.sku ?? ""),
@@ -277,191 +333,79 @@ export default function EnhancedOrdersPage() {
               price: Number.isFinite(price) ? price : 0,
               currency,
               image: resolveImageUrl(p.primary_photo),
-
-              rating: 4.5,
-              reviewCount: 0,
-              inStock: true,
-              featured: false,
-              isNew,
-              isBestseller: false,
-              category: typeIdToCategory[Number(p.type_id)] || "Wood",
-              tags: [],
-              specs: {
-                type_id: p.type_id,
-                subtype_id: p.subtype_id,
-              },
+              type_id: p.type_id,
             };
           });
 
         setProducts(mapped);
       } catch (e: any) {
-        setLoadError(e?.message || "Failed to load products");
+        setLoadError(e?.message || t("orders.errors.loadFailed"));
       } finally {
         if (mounted) setLoading(false);
       }
     };
 
     fetchProducts();
-
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [t]);
 
-  // Toast
-  const showToast = useCallback(
-    (message: string, type: "success" | "error" = "success") => {
-      setToast({ message, type });
-      const id = setTimeout(() => setToast(null), 2500);
-      return () => clearTimeout(id);
-    },
-    []
-  );
+  /** ---------- TYPE NAME LOOKUP ---------- */
+  const typeIdToName = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const tp of types) map.set(Number(tp.id), tp.name);
+    return map;
+  }, [types]);
 
-  /** ---------- DERIVED (FIXED: normalize category + sort so Sidebar cannot break it) ---------- */
-  const filteredAndSortedPipes = useMemo(() => {
+  const categoriesList = useMemo(() => {
+    // "All" + DB types (names)
+    const names = types.map((x) => x.name);
+    return ["All", ...names];
+  }, [types]);
+
+  /** ---------- FILTER + SORT (search includes name, sku, description) ---------- */
+  const filteredAndSorted = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-
-    // ✅ category normalization
-    const normalizedCategory = categoriesList.includes(selectedCategory)
-      ? selectedCategory
+    const normalizedType = categoriesList.includes(selectedType)
+      ? selectedType
       : "All";
 
-    // ✅ sort normalization
-    const allowedSort = new Set(sortOptions.map((s) => s.value));
-    const normalizedSort = allowedSort.has(sortBy) ? sortBy : "featured";
+    const withTypeName = products.map((p) => {
+      const typeName = p.type_id ? typeIdToName.get(Number(p.type_id)) : undefined;
+      return { ...p, typeName: typeName || "Unknown" };
+    });
 
-    let filtered = products
-      .filter(
-        (p) => normalizedCategory === "All" || p.category === normalizedCategory
-      )
-      .filter((p) => {
-        if (!term) return true;
-        const tags = (p.tags ?? []).map((x) => x.toLowerCase());
-        return (
-          p.name.toLowerCase().includes(term) ||
-          (p.sku ?? "").toLowerCase().includes(term) ||
-          (p.description ?? "").toLowerCase().includes(term) ||
-          tags.some((tag) => tag.includes(term))
-        );
+    let filtered = withTypeName.filter((p) => {
+      if (normalizedType === "All") return true;
+      // match DB type name
+      return (p.typeName || "").toLowerCase() === normalizedType.toLowerCase();
+    });
+
+    if (term) {
+      filtered = filtered.filter((p) => {
+        const name = (p.name || "").toLowerCase();
+        const sku = (p.sku || "").toLowerCase();
+        const desc = (p.description || "").toLowerCase();
+        return name.includes(term) || sku.includes(term) || desc.includes(term);
       });
+    }
 
     const arr = filtered.slice();
-    switch (normalizedSort) {
-      case "price-low":
-        arr.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-        break;
-      case "price-high":
-        arr.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-        break;
-      case "rating":
-        arr.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-        break;
-      case "newest":
-        arr.sort((a, b) => Number(Boolean(b.isNew)) - Number(Boolean(a.isNew)));
-        break;
-      case "bestseller":
-        arr.sort(
-          (a, b) =>
-            Number(Boolean(b.isBestseller)) - Number(Boolean(a.isBestseller))
-        );
-        break;
-      case "featured":
-      default:
-        arr.sort(
-          (a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured))
-        );
-    }
+
+    if (sortBy === "price-high") arr.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+    else arr.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
 
     return arr;
-  }, [products, selectedCategory, searchTerm, sortBy]);
+  }, [products, searchTerm, selectedType, categoriesList, sortBy, typeIdToName]);
 
-  /** ---------- FAVORITES / RECENT ---------- */
-  const toggleFavorite = useCallback(
-    (pipeId: string | number) => {
-      setFavorites((prev) => {
-        const adding = !prev.includes(pipeId);
-        const pipe = products.find((p) => p.id === pipeId);
-        if (pipe)
-          showToast(
-            adding
-              ? `${pipe.name} added to favorites!`
-              : `${pipe.name} removed from favorites`
-          );
-        return adding ? [...prev, pipeId] : prev.filter((id) => id !== pipeId);
-      });
-    },
-    [products, showToast]
-  );
+  /** ---------- MODAL: PHOTO ONLY ---------- */
+  const openProduct = useCallback((pipe: ApiProduct) => setSelectedPipe(pipe), []);
+  const closeProduct = useCallback(() => setSelectedPipe(null), []);
 
-  const addToRecentlyViewed = useCallback((pipe: any) => {
-    setRecentlyViewed((prev) => {
-      const filtered = prev.filter((p) => p.id !== pipe.id);
-      return [pipe, ...filtered].slice(0, 5);
-    });
-  }, []);
-
-  /** ---------- CUSTOM PIPE ---------- */
-  const getCustomPipeTotal = useCallback(() => {
-    return (
-      (selectedHead?.price || 0) +
-      (selectedRing?.price || 0) +
-      (selectedTail?.price || 0)
-    );
-  }, [selectedHead, selectedRing, selectedTail]);
-
-  const addCustomPipeToCart = useCallback(() => {
-    if (!selectedHead || !selectedRing || !selectedTail || !customPipeName.trim()) {
-      showToast("Please complete your design before adding to cart!", "error");
-      return;
-    }
-
-    addToCart({
-      id: `custom-${Date.now()}`,
-      type: "custom",
-      name: customPipeName || "Custom Pipe",
-      price: getCustomPipeTotal(),
-      quantity: 1,
-      image: selectedHead.image,
-      currency: "EUR",
-      head: selectedHead,
-      ring: selectedRing,
-      tail: selectedTail,
-    } as any);
-
-    showToast("Custom pipe added to cart! 🎉");
-  }, [
-    selectedHead,
-    selectedRing,
-    selectedTail,
-    customPipeName,
-    getCustomPipeTotal,
-    addToCart,
-    showToast,
-  ]);
-
-  const resetCustomPipe = useCallback(() => {
-    setSelectedHead(null);
-    setSelectedRing(null);
-    setSelectedTail(null);
-    setCustomPipeName("");
-    setBuildStep(1);
-    showToast("Custom pipe design reset!");
-  }, [showToast]);
-
-  const handlePipeSelect = useCallback(
-    (pipe: any) => {
-      setSelectedPipe(pipe);
-      addToRecentlyViewed(pipe);
-    },
-    [addToRecentlyViewed]
-  );
-
-  // ✅ Strict cart payload
+  /** ---------- CART ---------- */
   const addCommercialToCart = useCallback(
     (pipe: ApiProduct) => {
-      if (!pipe.inStock) return;
-
       addToCart({
         id: pipe.id,
         type: "commercial",
@@ -473,32 +417,13 @@ export default function EnhancedOrdersPage() {
         quantity: 1,
       } as any);
 
-      showToast("Added to cart ✅");
+      showToast(t("orders.toasts.added"));
     },
-    [addToCart, showToast]
+    [addToCart, showToast, t]
   );
 
-  /** ---------- UI ---------- */
   return (
     <>
-      <Sidebar
-        isSidebarExpanded={isSidebarExpanded}
-        setIsSidebarExpanded={setIsSidebarExpanded}
-        navbarHidden={navbarHidden}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-        categoriesList={categoriesList}
-        setCurrentPage={() => {}}
-        activeSection={activeSection}
-        setActiveSection={setActiveSection as any}
-        selectedHead={selectedHead}
-        selectedRing={selectedRing}
-        selectedTail={selectedTail}
-        getCustomPipeTotal={getCustomPipeTotal}
-        resetCustomPipe={resetCustomPipe}
-        isMobile={isMobile}
-      />
-
       <AnimatePresence>
         {toast && (
           <Toast
@@ -521,11 +446,52 @@ export default function EnhancedOrdersPage() {
         </span>
       </button>
 
-      <main className="relative min-h-screen pt-20 sm:pt-28 pb-24 flex overflow-auto bg-[url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop')] bg-cover bg-center text-white font-serif">
+      {/* ✅ PHOTO MODAL: single photo only (no info) */}
+      <AnimatePresence>
+        {selectedPipe && (
+          <motion.div
+            className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeProduct}
+          >
+            <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
+
+            <motion.div
+              className="relative z-10 w-full max-w-5xl rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-2xl"
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              transition={{ type: "spring", damping: 22, stiffness: 260 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={closeProduct}
+                className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/60 hover:bg-black/75 border border-white/10"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+
+              <div className="w-full aspect-[4/3] bg-black">
+                <img
+                  src={selectedPipe.image}
+                  alt={selectedPipe.name}
+                  className="w-full h-full object-contain"
+                  loading="eager"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <main className="relative min-h-screen pt-20 sm:pt-28 pb-24 bg-[url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop')] bg-cover bg-center text-white font-serif">
         <div className="absolute inset-0 bg-black/70 z-0" />
 
         <motion.div
-          className="relative z-20 flex-1 px-3 sm:px-6 transition-all duration-300"
+          className="relative z-20 px-3 sm:px-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
@@ -548,26 +514,26 @@ export default function EnhancedOrdersPage() {
               }}
               transition={{ duration: 3, repeat: Infinity }}
             >
-              Premium Tobacco Pipes ✨
+              {t("orders.title")}
             </motion.h1>
+
             <p className="text-base sm:text-lg md:text-xl text-stone-300 max-w-2xl mx-auto px-4">
-              Discover our exquisite collection of handcrafted pipes and create
-              your perfect custom piece
+              {t("orders.subtitle")}
             </p>
 
-            {/* Top controls */}
-            <div className="mt-6 max-w-5xl mx-auto flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-center px-2">
+            {/* ✅ Controls: Search + Types (from DB) + Sort (2 only) + Build button */}
+            <div className="mt-6 max-w-6xl mx-auto flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-center px-2">
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name, SKU, description…"
+                placeholder={t("orders.searchPlaceholder")}
                 className="w-full md:w-[420px] px-4 py-3 rounded-xl bg-black/50 border border-white/10 outline-none focus:border-[#c9a36a]/50"
               />
 
               <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full md:w-[220px] px-4 py-3 rounded-xl bg-black/50 border border-white/10 outline-none focus:border-[#c9a36a]/50"
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="w-full md:w-[260px] px-4 py-3 rounded-xl bg-black/50 border border-white/10 outline-none focus:border-[#c9a36a]/50"
               >
                 {categoriesList.map((c) => (
                   <option key={c} value={c} className="bg-black">
@@ -578,253 +544,124 @@ export default function EnhancedOrdersPage() {
 
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) =>
+                  setSortBy(e.target.value as "price-high" | "price-low")
+                }
                 className="w-full md:w-[260px] px-4 py-3 rounded-xl bg-black/50 border border-white/10 outline-none focus:border-[#c9a36a]/50"
               >
-                {sortOptions.map((o) => (
-                  <option key={o.value} value={o.value} className="bg-black">
-                    {o.label}
-                  </option>
-                ))}
+                <option value="price-high" className="bg-black">
+                  {t("orders.sort.priceHigh")}
+                </option>
+                <option value="price-low" className="bg-black">
+                  {t("orders.sort.priceLow")}
+                </option>
               </select>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate("/custom")}
+                className="w-full md:w-[260px] px-5 py-3 rounded-xl font-bold shadow-lg bg-gradient-to-r from-[#c9a36a] to-[#d4b173] hover:from-[#d4b173] hover:to-[#e5c584] text-black"
+              >
+                {t("orders.actions.buildYourOwn")}
+              </motion.button>
             </div>
 
+            {typesError && (
+              <div className="mt-3 text-xs text-red-300">
+                Types failed to load: {typesError}
+              </div>
+            )}
+
             <div className="mt-3 text-sm text-stone-400">
-              Showing{" "}
+              {t("orders.showing")}{" "}
               <span className="text-[#c9a36a] font-semibold">
-                {filteredAndSortedPipes.length}
+                {filteredAndSorted.length}
               </span>{" "}
-              products
+              {t("orders.products")}
             </div>
           </motion.div>
 
-          <AnimatePresence mode="wait">
-            {activeSection === "commercial" && (
-              <motion.div
-                key="commercial"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.5 }}
-              >
-                {/* Products grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 max-w-7xl mx-auto">
-                  {!loading &&
-                    !loadError &&
-                    filteredAndSortedPipes.map((pipe, idx) => (
-                      <motion.div
-                        key={pipe.id}
-                        className="group bg-gradient-to-br from-[#1a120b]/95 via-[#1a120b]/90 to-[#2a1d13]/95 backdrop-blur-lg border border-[#2a1d13]/50 rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-xl hover:shadow-2xl hover:shadow-[#c9a36a]/10 transition-all overflow-hidden relative"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.03, duration: 0.45 }}
-                        viewport={{ once: true }}
-                        whileHover={{ y: -5, borderColor: "rgba(201,163,106,.4)" }}
+          {/* Grid */}
+          <div className="max-w-7xl mx-auto">
+            {loading && (
+              <div className="text-center text-stone-300 py-10">
+                {t("orders.loading")}
+              </div>
+            )}
+
+            {loadError && (
+              <div className="text-center text-red-300 py-10">
+                {t("orders.errors.failedPrefix")} {loadError}
+              </div>
+            )}
+
+            {!loading && !loadError && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                {filteredAndSorted.map((pipe, idx) => (
+                  <motion.div
+                    key={pipe.id}
+                    className="group bg-gradient-to-br from-[#1a120b]/95 via-[#1a120b]/90 to-[#2a1d13]/95 backdrop-blur-lg border border-[#2a1d13]/50 rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-xl hover:shadow-2xl hover:shadow-[#c9a36a]/10 transition-all overflow-hidden relative cursor-pointer"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.03, duration: 0.45 }}
+                    viewport={{ once: true }}
+                    whileHover={{ y: -5, borderColor: "rgba(201,163,106,.4)" }}
+                    onClick={() => openProduct(pipe)} // ✅ click anywhere opens photo
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") openProduct(pipe);
+                    }}
+                    aria-label={`Open ${pipe.name}`}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#c9a36a]/0 via-[#c9a36a]/5 to-[#c9a36a]/0 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+
+                    <div className="relative z-10">
+                      {/* ✅ single photo only in image area (no sku, no like, no rating, no stock, no eye, no hover quick view) */}
+                      <div className="relative overflow-hidden rounded-xl mb-4 aspect-[4/3] bg-black/30">
+                        <img
+                          src={pipe.image}
+                          alt={pipe.name}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                      </div>
+
+                      {/* Minimal info only */}
+                      <div className="space-y-3">
+                        <h3 className="text-lg sm:text-xl font-bold line-clamp-1 group-hover:text-[#c9a36a] transition-colors">
+                          {pipe.name}
+                        </h3>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-xl sm:text-2xl font-bold text-[#c9a36a]">
+                            {fmtMoney(Number(pipe.price ?? 0), pipe.currency)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ✅ Add to cart: must NOT open photo */}
+                    <div className="relative z-10 flex gap-3 mt-5">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addCommercialToCart(pipe);
+                        }}
+                        className="flex-1 px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg bg-gradient-to-r from-[#c9a36a] to-[#d4b173] hover:from-[#d4b173] hover:to-[#e5c584] text-black shadow-[#c9a36a]/25"
                       >
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#c9a36a]/0 via-[#c9a36a]/5 to-[#c9a36a]/0 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
-
-                        <div className="relative z-10">
-                          {/* ✅ TRUE 4:3 image box */}
-                          <div className="relative overflow-hidden rounded-xl mb-4 aspect-[4/3] bg-black/30">
-                            <img
-                              src={pipe.image}
-                              alt={pipe.name}
-                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                              loading="lazy"
-                            />
-
-                            <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs border border-white/10">
-                              SKU:{" "}
-                              <span className="text-[#c9a36a] font-semibold">
-                                {pipe.sku || "—"}
-                              </span>
-                            </div>
-
-                            <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
-                              <motion.button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleFavorite(pipe.id);
-                                }}
-                                className="bg-black/70 backdrop-blur-sm p-2 rounded-full hover:bg-black/80"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                aria-label="Toggle favorite"
-                              >
-                                <Heart
-                                  className={`w-4 h-4 ${
-                                    favorites.includes(pipe.id)
-                                      ? "text-red-500 fill-current"
-                                      : "text-white"
-                                  }`}
-                                />
-                              </motion.button>
-
-                              <div className="bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-lg">
-                                <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                                <span className="text-xs font-medium">
-                                  {pipe.rating ?? 4.5}
-                                </span>
-                                <span className="text-xs text-stone-400">
-                                  ({pipe.reviewCount ?? 0})
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <motion.button
-                                onClick={() => handlePipeSelect(pipe)}
-                                className="bg-[#c9a36a] hover:bg-[#d4b173] text-black px-5 py-3 rounded-lg font-semibold flex items-center gap-2 shadow-lg"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                              >
-                                <Eye className="w-4 h-4" />
-                                Quick View
-                              </motion.button>
-                            </div>
-                          </div>
-
-                          <div className="space-y-4">
-                            <div>
-                              <h3 className="text-lg sm:text-xl font-bold mb-2 line-clamp-1 group-hover:text-[#c9a36a] transition-colors">
-                                {pipe.name}
-                              </h3>
-                              <p className="text-xs sm:text-sm text-stone-400 mb-3 line-clamp-2 leading-relaxed">
-                                {pipe.description}
-                              </p>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xl sm:text-2xl font-bold text-[#c9a36a]">
-                                  {fmtMoney(Number(pipe.price ?? 0), pipe.currency)}
-                                </span>
-                                {pipe.originalPrice && (
-                                  <span className="text-sm text-stone-500 line-through">
-                                    {fmtMoney(
-                                      Number(pipe.originalPrice),
-                                      pipe.currency
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-
-                              <span
-                                className={`inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full ${
-                                  pipe.inStock
-                                    ? "bg-green-800/30 text-green-300 border border-green-700/30"
-                                    : "bg-red-800/30 text-red-300 border border-red-700/30"
-                                }`}
-                              >
-                                <span
-                                  className={`w-2 h-2 rounded-full ${
-                                    pipe.inStock ? "bg-green-400" : "bg-red-400"
-                                  }`}
-                                />
-                                {pipe.inStock ? "In Stock" : "Out of Stock"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="relative z-10 flex gap-3 mt-5">
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => addCommercialToCart(pipe)}
-                            disabled={!pipe.inStock}
-                            className={`flex-1 px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg ${
-                              pipe.inStock
-                                ? "bg-gradient-to-r from-[#c9a36a] to-[#d4b173] hover:from-[#d4b173] hover:to-[#e5c584] text-black shadow-[#c9a36a]/25"
-                                : "bg-stone-700/50 text-stone-400 cursor-not-allowed"
-                            }`}
-                          >
-                            <ShoppingCart className="w-4 h-4" />
-                            <span className="text-sm">
-                              {pipe.inStock ? "Add to Cart" : "Sold Out"}
-                            </span>
-                          </motion.button>
-
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => handlePipeSelect(pipe)}
-                            className="bg-gradient-to-r from-stone-800/80 to-stone-700/80 hover:from-stone-700/80 hover:to-stone-600/80 px-5 py-3.5 rounded-xl border border-[#c9a36a]/20 hover:border-[#c9a36a]/40 shadow-lg"
-                          >
-                            <Eye className="w-4 h-4 text-[#c9a36a]" />
-                          </motion.button>
-                        </div>
-                      </motion.div>
-                    ))}
-                </div>
-
-                {loading && (
-                  <div className="text-center text-stone-300 py-10">
-                    Loading products...
-                  </div>
-                )}
-
-                {loadError && (
-                  <div className="text-center text-red-300 py-10">
-                    Failed to load products: {loadError}
-                  </div>
-                )}
-              </motion.div>
+                        <ShoppingCart className="w-4 h-4" />
+                        <span className="text-sm">{t("orders.actions.addToCart")}</span>
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             )}
-
-            {/* CUSTOM BUILDER (kept minimal here) */}
-            {activeSection === "custom" && (
-              <motion.div
-                key="custom"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="max-w-5xl mx-auto bg-gradient-to-br from-[#1a120b]/95 to-[#2a1d13]/95 backdrop-blur-lg border border-[#c9a36a]/30 rounded-2xl p-6 sm:p-8 shadow-2xl">
-                  <div className="text-center mt-6">
-                    <motion.button
-                      onClick={addCustomPipeToCart}
-                      disabled={
-                        !customPipeName.trim() ||
-                        !selectedHead ||
-                        !selectedRing ||
-                        !selectedTail
-                      }
-                      className={`px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl ${
-                        customPipeName.trim() &&
-                        selectedHead &&
-                        selectedRing &&
-                        selectedTail
-                          ? "bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black"
-                          : "bg-stone-700/50 text-stone-400 cursor-not-allowed"
-                      }`}
-                      whileHover={customPipeName.trim() ? { scale: 1.02 } : {}}
-                      whileTap={customPipeName.trim() ? { scale: 0.98 } : {}}
-                    >
-                      <ShoppingCart className="w-5 h-5" />
-                      Confirm & Add to Cart
-                    </motion.button>
-
-                    <button
-                      onClick={() => navigate("/cart")}
-                      className="inline-flex items-center justify-center gap-2 mt-4 text-sm text-[#c9a36a] hover:text-[#e5c584] transition"
-                    >
-                      <ShoppingCart className="w-4 h-4" />
-                      View Cart
-                    </button>
-
-                    <button
-                      onClick={resetCustomPipe}
-                      className="block mx-auto mt-4 text-sm text-stone-400 hover:text-stone-200 transition"
-                    >
-                      Reset builder
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          </div>
         </motion.div>
       </main>
     </>

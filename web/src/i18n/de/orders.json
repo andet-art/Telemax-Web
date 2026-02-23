@@ -1,0 +1,48 @@
+{
+  "orders": {
+    "title": "Premium-Tabakpfeifen ✨",
+    "subtitle": "Entdecke unsere exquisite Kollektion handgefertigter Pfeifen und erstelle dein perfektes Unikat",
+    "showing": "Anzeige",
+    "products": "Produkte",
+    "searchPlaceholder": "Suche nach Name, SKU, Beschreibung…",
+    "loading": "Produkte werden geladen...",
+    "sort": {
+      "priceHigh": "Preis: Hoch bis Niedrig",
+      "priceLow": "Preis: Niedrig bis Hoch"
+    },
+    "actions": {
+      "addToCart": "In den Warenkorb",
+      "buildYourOwn": "Eigene Pfeife bauen",
+      "backToShop": "Zurück zum Shop",
+      "confirmAdd": "Bestätigen & in den Warenkorb",
+      "reset": "Zurücksetzen",
+      "viewCart": "Warenkorb ansehen"
+    },
+    "errors": {
+      "failedPrefix": "Produkte konnten nicht geladen werden:",
+      "loadFailed": "Produkte konnten nicht geladen werden"
+    },
+    "toasts": {
+      "added": "In den Warenkorb hinzugefügt ✅",
+      "reset": "Custom-Design zurückgesetzt!",
+      "completeDesign": "Bitte vervollständige dein Design, bevor du es in den Warenkorb legst!",
+      "customAdded": "Custom-Pfeife wurde hinzugefügt! 🎉"
+    },
+    "custom": {
+      "title": "Eigene Pfeife bauen",
+      "subtitle": "Gib deinem Design einen Namen und bestätige, wenn du bereit bist",
+      "defaultName": "Custom-Pfeife",
+      "nameLabel": "Name der Custom-Pfeife",
+      "namePlaceholder": "z.B. Royal Walnut",
+      "total": "Gesamt:",
+      "noteTitle": "Builder-Status",
+      "noteBody": "Die Teile-Auswahl kann später mit deinem Backend verbunden werden. Dieser Screen ist jetzt fertig und übersetzt.",
+      "parts": {
+        "head": "Kopf",
+        "ring": "Ring",
+        "tail": "Endstück"
+      },
+      "todo": "TODO: Teile-Picker (Kopf/Ring/Endstück) mit deiner API verbinden."
+    }
+  }
+}

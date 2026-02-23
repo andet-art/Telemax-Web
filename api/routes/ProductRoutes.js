@@ -2,8 +2,8 @@
 const express = require("express");
 const router = express.Router();
 
-// IMPORTANT: case-sensitive path (Linux)
-const { getProducts } = require("../controllers/ProductController");
+// ✅ FIX: match the real filename (productController.js)
+const { getProducts } = require("../controllers/productController");
 
 // GET /api/products
 router.get("/", getProducts);

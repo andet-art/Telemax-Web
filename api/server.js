@@ -13,6 +13,9 @@ const userRoutes = require("./routes/userRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const productRoutes = require("./routes/ProductRoutes");
 
+// ✅ NEW: Catalog Types route
+const catalogTypeRoutes = require("./routes/CatalogTypeRoutes");
+
 // Error handler
 const errorHandler = require("./middleware/errorHandler");
 
@@ -33,7 +36,12 @@ app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
+
+      // ✅ Allow listed origins
       if (allowedOrigins.includes(origin)) return callback(null, true);
+
+      // ✅ If you want to block unknown origins, change this to:
+      // return callback(new Error("Not allowed by CORS"), false);
       return callback(null, true);
     },
     credentials: true,
@@ -69,6 +77,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/products", productRoutes);
+
+// ✅ ADD THIS: Types from catalog_types table
+app.use("/api/catalog-types", catalogTypeRoutes);
 
 /* ================================
    404 HANDLER

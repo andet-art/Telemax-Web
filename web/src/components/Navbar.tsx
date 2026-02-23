@@ -107,7 +107,6 @@ const Navbar = () => {
         .brand-logo:hover { color: #f5dfa5; }
 
         .nav-link {
-          font-family: 'Cormorant Garamond', serif;
           font-size: 0.95rem;
           font-weight: 500;
           letter-spacing: 0.12em;
@@ -162,10 +161,19 @@ const Navbar = () => {
         transition={{ duration: 0.35, ease: "easeInOut" }}
       >
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+          
+          {/* Logo + Brand */}
           <Link to="/home" className="brand-logo" onClick={scrollToTop}>
-            Pfeifenhaus
+            <img
+              src="/assets/telemax-logo.png"
+              alt="Pfeifenhaus"
+              className="h-7 w-auto object-contain opacity-95"
+              draggable={false}
+            />
+            <span>{t("navbar.brand", { defaultValue: "Pfeifenhaus" })}</span>
           </Link>
 
+          {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-10">
             {links.map((link) => (
               <button
@@ -178,6 +186,7 @@ const Navbar = () => {
             ))}
           </div>
 
+          {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-3">
             <button className="lang-btn" onClick={toggleLanguage}>
               {currentLang === "de" ? "EN" : "DE"}
@@ -240,6 +249,7 @@ const Navbar = () => {
             )}
           </div>
 
+          {/* Mobile Toggle */}
           <div className="md:hidden">
             <button onClick={() => setOpen((v) => !v)} className="text-white">
               {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}

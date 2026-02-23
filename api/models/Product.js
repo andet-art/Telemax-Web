@@ -8,6 +8,7 @@ const Product = {
         id,
         sku,
         name,
+        variant_label,
         type_id,
         subtype_id,
         description,
