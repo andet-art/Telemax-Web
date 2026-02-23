@@ -1,11 +1,5 @@
-<<<<<<< HEAD
 // pages/signup.tsx
 import { useState } from "react";
-=======
-// pages/signup.tsx - FINAL WORKING VERSION (MATCHES BACKEND 100%)
-
-import React, { useState } from "react";
->>>>>>> dfe95d699481c043f99427157b4fc06574f69192
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 
@@ -25,10 +19,6 @@ type Form = {
   age_verified: boolean;
   terms_accepted: boolean;
   privacy_accepted: boolean;
-<<<<<<< HEAD
-=======
-
->>>>>>> dfe95d699481c043f99427157b4fc06574f69192
   marketing_emails: boolean;
 };
 
@@ -45,27 +35,11 @@ export default function SignUp() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState<Form>({
-<<<<<<< HEAD
     first_name: "", last_name: "", email: "", password: "",
     phone_number: "", date_of_birth: "", country: "",
     shipping_address: "", billing_address: "",
     same_billing_address: true,
     age_verified: false, terms_accepted: false, privacy_accepted: false,
-=======
-    first_name: "",
-    last_name: "",
-    email: "",
-    password: "",
-    phone_number: "",
-    date_of_birth: "",
-    country: "",
-    shipping_address: "",
-    billing_address: "",
-    same_billing_address: true,
-    age_verified: false,
-    terms_accepted: false,
-    privacy_accepted: false,
->>>>>>> dfe95d699481c043f99427157b4fc06574f69192
     marketing_emails: false,
   });
 
@@ -109,7 +83,6 @@ export default function SignUp() {
         last_name: form.last_name.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
-<<<<<<< HEAD
         phone_number: form.phone_number.trim() || undefined,
         date_of_birth: form.date_of_birth || undefined,
         country: form.country || undefined,
@@ -120,20 +93,6 @@ export default function SignUp() {
         terms_accepted: form.terms_accepted,
         privacy_accepted: form.privacy_accepted,
         age_verified: form.age_verified,
-=======
-        phone_number: form.phone_number.trim() || null,
-        date_of_birth: form.date_of_birth || null,
-        country: form.country || null,
-
-        // 🔥 MUST BE BOOLEAN (backend validation)
-        age_verified: form.age_verified,
-        terms_accepted: form.terms_accepted,
-        privacy_accepted: form.privacy_accepted,
-
-        // DB related (numbers)
-        is_18_plus: form.age_verified ? 1 : 0,
-        marketing_emails: form.marketing_emails ? 1 : 0,
->>>>>>> dfe95d699481c043f99427157b4fc06574f69192
       };
 
       const { data } = await api.post("/api/auth/signup", payload);
