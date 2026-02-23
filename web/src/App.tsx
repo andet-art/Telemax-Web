@@ -16,7 +16,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import OrderHistory from "./pages/OrderHistory";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Cart from "./pages/Cart";
-
+import Overview from "./pages/profile/OverviewDetails";
+import Addresses from "./pages/profile/Addresses";
+import Settings from "./pages/profile/Settings";
 function App() {
   return (
     <Router>
@@ -40,6 +42,9 @@ function App() {
           <Route path="/customize/:id" element={<CustomizePage />} />
           <Route path="/admindashboard" element={<AdminDashboard />} />
           <Route path="/order-history" element={<OrderHistory />} />
+          <Route path="/profile/overview" element={<Overview />} />
+          <Route path="/profile/addresses" element={<Addresses />} />
+          <Route path="/profile/settings" element={<Settings />} />
         </Routes>
       </MainLayout>
     </Router>

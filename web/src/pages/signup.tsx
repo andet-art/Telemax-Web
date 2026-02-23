@@ -1,4 +1,4 @@
-// pages/signup.tsx - FIXED TO MATCH BACKEND
+// pages/signup.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -8,7 +8,7 @@ type Form = {
   last_name: string;
   email: string;
   password: string;
-  phone_number: string;  // Changed from 'phone'
+  phone_number: string;
   date_of_birth: string;
   country: string;
   shipping_address: string;
@@ -17,7 +17,7 @@ type Form = {
   age_verified: boolean;
   terms_accepted: boolean;
   privacy_accepted: boolean;
-  marketing_emails: boolean;  // Changed from 'marketing_consent'
+  marketing_emails: boolean;
 };
 
 const calcAge = (dob: string) => {
@@ -32,12 +32,11 @@ export default function SignUp() {
   const navigate = useNavigate();
   const [form, setForm] = useState<Form>({
     first_name: "", last_name: "", email: "", password: "",
-    phone_number: "",  // Changed from 'phone'
-    date_of_birth: "", country: "",
+    phone_number: "", date_of_birth: "", country: "",
     shipping_address: "", billing_address: "",
     same_billing_address: true,
     age_verified: false, terms_accepted: false, privacy_accepted: false,
-    marketing_emails: false,  // Changed from 'marketing_consent'
+    marketing_emails: false,
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -67,21 +66,25 @@ export default function SignUp() {
 
     setLoading(true);
     try {
-      // Send ALL fields that backend User.create() expects
       const payload = {
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
-        phone_number: form.phone_number.trim() || null,  // Changed from 'phone'
-        date_of_birth: form.date_of_birth || null,
-        country: form.country || null,
-        marketing_emails: form.marketing_emails,  // Changed from 'marketing_consent'
+        phone_number: form.phone_number.trim() || undefined,
+        date_of_birth: form.date_of_birth || undefined,
+        country: form.country || undefined,
+        shipping_address: form.shipping_address.trim() || undefined,
+        billing_address: !form.same_billing_address && form.billing_address.trim() ? form.billing_address.trim() : undefined,
+        billing_same_as_shipping: form.same_billing_address,
+        marketing_emails: form.marketing_emails,
+        terms_accepted: form.terms_accepted,
+        privacy_accepted: form.privacy_accepted,
+        age_verified: form.age_verified,
       };
 
       const { data } = await api.post("/api/auth/signup", payload);
 
-      // If API returns token+user, auto sign-in; else send to signin
       if (data?.token && data?.user) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));

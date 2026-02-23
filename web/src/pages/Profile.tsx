@@ -1,284 +1,221 @@
 // src/pages/profile.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import OverviewDetails from "@/pages/profile/OverviewDetails";
+import Addresses from "@/pages/profile/Addresses";
+import Settings from "@/pages/profile/Settings";
 
-const API = import.meta.env.VITE_API_BASE_URL || "http://209.38.231.125:4000";
+const API_URL = "http://138.68.248.164:4000";
 
-type Editable = {
-  phone: string;
-  shipping_address: string;
-  billing_address: string;
-  marketing_consent: boolean;
+export type Address = {
+  id: number;
+  address_type: string;
+  full_address: string;
+  country: string;
+  is_default: boolean;
+};
+
+export type User = {
+  id: number;
   first_name: string;
   last_name: string;
+  email: string;
+  phone_number: string;
   date_of_birth: string;
   country: string;
-  password?: string;
+  marketing_emails: boolean;
+  created_at: string;
+  addresses: Address[];
 };
 
-type PublicUser = {
-  id: number;
-  email: string;
-  role: string;
-  first_name?: string;
-  last_name?: string;
-  phone?: string;
-  country?: string;
-  shipping_address?: string;
-  billing_address?: string;
-  age_verified?: boolean;
-  terms_accepted?: boolean;
-  privacy_accepted?: boolean;
-  marketing_consent?: boolean;
-  created_at?: string;
-  updated_at?: string;
-};
+type MenuItem = "overview" | "addresses" | "settings";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<PublicUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [editable, setEditable] = useState<Editable>({
-    phone: "",
-    shipping_address: "",
-    billing_address: "",
-    marketing_consent: false,
-    first_name: "",
-    last_name: "",
-    date_of_birth: "",
-    country: "",
-    password: "",
-  });
-
-  const toggleSection = (key: string) => setExpanded(expanded === key ? null : key);
+  const [activeMenu, setActiveMenu] = useState<MenuItem>("overview");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
       navigate("/signin");
       return;
     }
 
-    (async () => {
-      try {
-        // ✅ Your backend exposes GET /api/auth/me and returns { user: {...} }
-        const res = await fetch(`${API}/api/auth/me`, {
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        });
-
-        if (res.status === 401) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          navigate("/signin");
-          return;
-        }
-        if (!res.ok) throw new Error(await res.text());
-
-        const data = await res.json();
-        const me: PublicUser = data?.user ?? data; // tolerate either shape
-
-        setUser(me);
-        setEditable({
-          phone: me.phone ?? "",
-          shipping_address: me.shipping_address ?? "",
-          billing_address: me.billing_address ?? "",
-          marketing_consent: !!me.marketing_consent,
-          first_name: me.first_name ?? "",
-          last_name: me.last_name ?? "",
-          date_of_birth: (me as any)?.date_of_birth ?? "", // if present
-          country: me.country ?? "",
-          password: "",
-        });
-      } catch (e) {
-        console.error("Profile load error", e);
-        toast.error("Failed to load profile");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [navigate]);
-
-  const tryUpdate = async (path: string, body: any, token: string) => {
-    const res = await fetch(`${API}${path}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      navigate("/signin");
-      return false;
-    }
-    if (res.ok) return true;
-    // allow caller to decide fallback on 404/405
-    if (res.status === 404 || res.status === 405) return false;
-    throw new Error(await res.text());
-  };
-
-  const handleSave = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return navigate("/signin");
-
     try {
-      const body: any = { ...editable };
-      if (!body.password) delete body.password; // don't send empty password
+      const response = await fetch(`${API_URL}/api/profile`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      // ✅ Try common update locations
-      let updated = await tryUpdate("/api/users/me", body, token);
-      if (!updated) {
-        updated = await tryUpdate("/api/profile", body, token);
-      }
-      if (!updated) {
-        // last resort: if you actually implemented PUT /api/auth/me
-        updated = await tryUpdate("/api/auth/me", body, token);
-      }
-      if (!updated) {
-        toast.error("Update endpoint not found (ask backend to add PUT /api/users/me)");
+      if (response.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/signin");
         return;
       }
 
-      // Keep local user cache fresh
-      const current = (user || (localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")!) : {})) as any;
-      const merged = { ...current, ...body };
-      setUser(merged);
-      localStorage.setItem("user", JSON.stringify(merged));
+      if (!response.ok) {
+        throw new Error("Failed to load profile");
+      }
 
-      toast.success("Profile updated successfully");
-      setEditable((e) => ({ ...e, password: "" })); // clear password field
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to update profile");
+      const result = await response.json();
+      setUser(result.data);
+    } catch (err: any) {
+      console.error("Profile load error:", err);
+      setError("Failed to load profile");
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) return <main className="min-h-screen flex items-center justify-center">Loading...</main>;
+  const handleSignOut = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/signin");
+  };
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-[#14110f] via-[#1a1612] to-[#14110f] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#c9a36a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading your profile...</p>
+        </div>
+      </main>
+    );
+  }
+
+  const menuItems = [
+    {
+      id: "overview" as MenuItem,
+      label: "Overview",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+        </svg>
+      ),
+    },
+    {
+      id: "addresses" as MenuItem,
+      label: "Addresses",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      ),
+    },
+    {
+      id: "settings" as MenuItem,
+      label: "Settings",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      ),
+    },
+  ];
 
   return (
-    <main className="min-h-screen bg-[#14110f] text-white px-4 py-12">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold text-center">Your Profile</h1>
-
-        {/* PERSONAL INFO */}
-        <section className="bg-[#1e1b18] rounded-lg shadow p-4">
-          <button onClick={() => toggleSection("personal")} className="w-full text-left text-xl font-semibold">
-            👤 Personal Info
-          </button>
-          {expanded === "personal" && (
-            <div className="mt-4 grid gap-3 text-sm">
-              <label>
-                <span className="font-medium">First Name:</span>
-                <input
-                  className="mt-1 w-full px-3 py-1 rounded bg-zinc-800 text-white"
-                  value={editable.first_name}
-                  onChange={(e) => setEditable({ ...editable, first_name: e.target.value })}
-                />
-              </label>
-
-              <label>
-                <span className="font-medium">Last Name:</span>
-                <input
-                  className="mt-1 w-full px-3 py-1 rounded bg-zinc-800 text-white"
-                  value={editable.last_name}
-                  onChange={(e) => setEditable({ ...editable, last_name: e.target.value })}
-                />
-              </label>
-
-              <label>
-                <span className="font-medium">Date of Birth:</span>
-                <input
-                  type="date"
-                  className="mt-1 w-full px-3 py-1 rounded bg-zinc-800 text-white"
-                  value={editable.date_of_birth || ""}
-                  onChange={(e) => setEditable({ ...editable, date_of_birth: e.target.value })}
-                />
-              </label>
-
-              <label>
-                <span className="font-medium">Country:</span>
-                <input
-                  className="mt-1 w-full px-3 py-1 rounded bg-zinc-800 text-white"
-                  value={editable.country || ""}
-                  onChange={(e) => setEditable({ ...editable, country: e.target.value })}
-                />
-              </label>
-
-              <label>
-                <span className="font-medium">Change Password:</span>
-                <input
-                  type="password"
-                  className="mt-1 w-full px-3 py-1 rounded bg-zinc-800 text-white"
-                  value={editable.password || ""}
-                  onChange={(e) => setEditable({ ...editable, password: e.target.value })}
-                  placeholder="Leave empty to keep current"
-                />
-              </label>
+    <main className="min-h-screen bg-gradient-to-br from-[#14110f] via-[#1a1612] to-[#14110f] text-white">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-[#c9a36a] to-[#b8935a] rounded-full flex items-center justify-center shadow-xl">
+              <span className="text-2xl font-bold text-white">
+                {user?.first_name.charAt(0)}{user?.last_name.charAt(0)}
+              </span>
             </div>
-          )}
-        </section>
-
-        {/* CONTACT INFO */}
-        <section className="bg-[#1e1b18] rounded-lg shadow p-4">
-          <button onClick={() => toggleSection("contact")} className="w-full text-left text-xl font-semibold">
-            📱 Contact & Preferences
-          </button>
-          {expanded === "contact" && (
-            <div className="mt-4 grid gap-3 text-sm">
-              <label>
-                <span className="font-medium">Phone:</span>
-                <input
-                  className="mt-1 w-full px-3 py-1 rounded bg-zinc-800 text-white"
-                  value={editable.phone}
-                  onChange={(e) => setEditable({ ...editable, phone: e.target.value })}
-                />
-              </label>
-              <label>
-                <span className="font-medium">Shipping Address:</span>
-                <input
-                  className="mt-1 w-full px-3 py-1 rounded bg-zinc-800 text-white"
-                  value={editable.shipping_address}
-                  onChange={(e) => setEditable({ ...editable, shipping_address: e.target.value })}
-                />
-              </label>
-              <label>
-                <span className="font-medium">Billing Address:</span>
-                <input
-                  className="mt-1 w-full px-3 py-1 rounded bg-zinc-800 text-white"
-                  value={editable.billing_address}
-                  onChange={(e) => setEditable({ ...editable, billing_address: e.target.value })}
-                />
-              </label>
-              <label className="flex items-center gap-2 mt-1">
-                <input
-                  type="checkbox"
-                  checked={editable.marketing_consent}
-                  onChange={(e) => setEditable({ ...editable, marketing_consent: e.target.checked })}
-                />
-                <span>Marketing Consent</span>
-              </label>
+            <div>
+              <h1 className="text-3xl font-bold">
+                {user?.first_name} {user?.last_name}
+              </h1>
+              <p className="text-stone-400">{user?.email}</p>
             </div>
-          )}
-        </section>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-2 px-4 py-2 bg-stone-800 hover:bg-stone-700 rounded-lg transition-all"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
+        </div>
 
-        <button
-          onClick={handleSave}
-          className="w-full bg-blue-600 hover:bg-blue-500 transition py-2 rounded-md text-white font-medium mt-4"
-        >
-          Save Changes
-        </button>
+        {/* Main Content with Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Sidebar */}
+          <aside className="lg:col-span-3">
+            <div className="bg-[#1e1b18]/80 backdrop-blur-xl border border-stone-800/50 rounded-2xl p-4 shadow-2xl sticky top-8">
+              <nav className="space-y-2">
+                {menuItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveMenu(item.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                      activeMenu === item.id
+                        ? "bg-gradient-to-r from-[#c9a36a] to-[#b8935a] text-white shadow-lg"
+                        : "text-stone-400 hover:bg-stone-800/50 hover:text-white"
+                    }`}
+                  >
+                    {item.icon}
+                    <span className="font-medium">{item.label}</span>
+                    {activeMenu === item.id && (
+                      <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </nav>
 
-        <button
-          onClick={() => {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            navigate("/signin");
-          }}
-          className="w-full bg-stone-700 hover:bg-stone-600 transition py-2 rounded-md text-white font-medium mt-2"
-        >
-          Sign Out
-        </button>
+              <div className="mt-6 pt-6 border-t border-stone-800">
+                <div className="bg-gradient-to-br from-green-500/10 to-transparent p-4 rounded-xl border border-green-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium text-green-400">Active Member</span>
+                  </div>
+                  <p className="text-xs text-stone-400">
+                    Since {user?.created_at ? new Date(user.created_at).toLocaleDateString() : "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* Main Content Area */}
+          <div className="lg:col-span-9">
+            <div className="bg-[#1e1b18]/80 backdrop-blur-xl border border-stone-800/50 rounded-2xl shadow-2xl overflow-hidden">
+              {error && (
+                <div className="m-6 bg-red-900/30 backdrop-blur-sm border border-red-700/50 text-red-200 px-6 py-4 rounded-xl flex items-center gap-3">
+                  <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
+                  </svg>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="p-8">
+                {activeMenu === "overview" && <OverviewDetails user={user} />}
+                {activeMenu === "addresses" && <Addresses user={user} />}
+                {activeMenu === "settings" && <Settings user={user} onUpdate={loadProfile} />}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   );
