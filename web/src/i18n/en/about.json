@@ -1,0 +1,59 @@
+{
+  "about": {
+    "kicker": "Hanseatic Pipes",
+    "title": "Crafting Stories in Every Pipe",
+    "subtitle": "Where tradition meets design excellence",
+    "ctaPrimary": "Explore Collection",
+    "ctaSecondary": "Contact Us",
+
+    "philosophyTitle": "Philosophy",
+    "philosophySubtitle": "A legacy of craftsmanship, refined through generations — built by hand, guided by detail, and shaped by time.",
+
+    "history": {
+      "p1": "For three generations, one family has carried the art of pipe craftsmanship in its heart — a heritage preserved with devotion, pride, and unwavering tradition. What began with simple tools and a clear eye for form and function has grown into a workshop admired worldwide under the name Hanseatic Pipes.",
+      "p2": "More than seventy years ago, the grandfather laid the foundation. In his small workshop, with the scent of wood and tobacco in the air, he shaped every pipe by hand — each one unique, each one carrying a soul. His son followed in his footsteps, learned the craft from an early age, and continued the tradition with the same passion.",
+      "p3": "For the daughter — today’s guardian of this legacy — the path was not easy. In a field long dominated by men, she earned her place not through loud words, but through knowledge, precision, and deep love for the craft. Her father supported her and believed she was the right one to carry the tradition forward.",
+      "p4": "Today she leads the company with the same dedication as her predecessors. Production remains handcrafted — every pipe is made step by step by hand, as it always has been. And yet, she has carefully modernized: new tools, refined processes, and a touch of innovation without losing the soul of the craft.",
+      "p5": "Under the name Hanseatic Pipes, the brand is now known on every continent. Collectors and connoisseurs value the unmistakable signature carried by every pipe. The workshop also produces private-label pieces for internationally respected houses — a quiet sign of the highest recognition.",
+      "p6": "This is the story of tradition and modernity united — a family legacy that reaches beyond generations. These pipes are not merely products, but witnesses of courage, resilience, and passion.",
+      "closing": "The future is clear: preserve tradition. Conquer the world. Pipe by pipe."
+    },
+
+    "highlights": {
+      "h1": "Handmade",
+      "h1v": "Piece by piece",
+      "h2": "Tradition",
+      "h2v": "3 generations",
+      "h3": "Global",
+      "h3v": "Collectors worldwide"
+    },
+
+    "products": {
+      "title": "Products & Achievements",
+      "lightersTitle": "Lighters",
+      "l1": "Reliable everyday performance",
+      "l2": "Premium finish & feel",
+      "l3": "Designed for durability",
+      "l4": "Craft-driven quality control",
+      "lightersParagraph": "Designed for reliability and daily use — with clean finishing and a premium feel.",
+
+      "pipesTitle": "Pipe Craftsmanship",
+      "p1": "Each pipe is shaped with patience, precision, and respect for the material — a process refined over decades.",
+      "p2": "From selection to finishing, we preserve the soul of traditional craftsmanship while embracing modern precision.",
+
+      "privateLabelTitle": "Private Label",
+      "privateLabelText": "We also produce private-label pipes for respected international houses — a quiet mark of trust and recognition."
+    },
+
+    "quote": {
+      "imageAlt": "Craftsmanship background",
+      "text": "A pipe is not merely an object — it is the quiet companion of thought, shaped by hand and guided by tradition.",
+      "author": "Hanseatic Pipes"
+    },
+
+    "cta": {
+      "footerText": "Experience True Craftsmanship",
+      "footerButton": "Contact Us"
+    }
+  }
+}

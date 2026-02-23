@@ -1,0 +1,23 @@
+
+{
+  "navbar": {
+    "brand": "Pfeifenhaus",
+    "links": {
+      "home": "Home",
+      "about": "About",
+      "orders": "Orders",
+      "contact": "Contact"
+    },
+    "actions": {
+      "signin": "Sign in",
+      "join": "Join",
+      "profile": "Profile",
+      "logout": "Logout"
+    },
+    "profile": {
+      "overview": "Overview",
+      "addresses": "Addresses",
+      "settings": "Settings"
+    }
+  }
+}

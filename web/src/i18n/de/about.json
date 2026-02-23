@@ -1,0 +1,59 @@
+{
+  "about": {
+    "kicker": "Hanseatic Pipes",
+    "title": "Geschichten in jeder Pfeife",
+    "subtitle": "Wo Tradition auf Design-Exzellenz trifft",
+    "ctaPrimary": "Kollektion entdecken",
+    "ctaSecondary": "Kontakt",
+
+    "philosophyTitle": "Philosophie",
+    "philosophySubtitle": "Ein Erbe des Handwerks, über Generationen verfeinert — von Hand gefertigt, mit Blick fürs Detail und geprägt von Zeit.",
+
+    "history": {
+      "p1": "Seit drei Generationen trägt eine Familie die Kunst des Tabakpfeifenhandwerks in ihrem Herzen – ein Erbe, das mit Hingabe, Stolz und unerschütterlicher Tradition gepflegt wird. Was einst mit einfachen Werkzeugen und einem klaren Blick für Form und Funktion begann, hat sich über Jahrzehnte zu einer Manufaktur entwickelt, die heute weltweit unter dem Namen Hanseatic Pipes geschätzt und bewundert wird.",
+      "p2": "Vor über siebzig Jahren legte der Großvater den Grundstein. In seiner kleinen Werkstatt, mit dem Duft von Holz und Tabak in der Luft, fertigte er jede Pfeife mit der Hand – jede ein Unikat, jede ein Stück Seele. Sein Sohn trat in seine Fußstapfen, lernte das Handwerk von Kindesbeinen an und führte die Tradition mit derselben Leidenschaft fort.",
+      "p3": "Für die Tochter, die heutige Hüterin dieses Erbes, war der Weg kein leichter. In einer Branche, die lange von Männern dominiert wurde, musste sie sich ihren Platz erkämpfen. Nicht mit lauten Worten, sondern mit Wissen, Präzision und einer tiefen Liebe zum Handwerk. Ihr Vater stand stets an ihrer Seite, unterstützte sie, wo er konnte, und glaubte fest daran, dass sie die Richtige war, um die Tradition in die Zukunft zu tragen.",
+      "p4": "Heute führt sie die Firma mit derselben Hingabe wie ihre Vorfahren. Die Produktion ist noch immer handwerklich geprägt, jede Pfeife wird Stück für Stück von Hand gefertigt – so, wie es seit jeher geschieht. Und doch hat sie behutsam modernisiert: neue Werkzeuge, präzisere Verfahren, ein Hauch von Innovation, ohne die Seele des Handwerks zu verlieren.",
+      "p5": "Unter dem Namen Hanseatic Pipes ist die Marke heute auf allen Kontinenten bekannt. Sammler, Kenner und Liebhaber schätzen die unverwechselbare Handschrift, die jede Pfeife trägt. Neben der eigenen Marke fertigt die Manufaktur auch Private Label-Produktionen für international renommierte Häuser der Pfeifenbranche – ein stilles Zeichen höchster Anerkennung.",
+      "p6": "So steht sie heute da: als Frau, die Tradition und Moderne vereint, als Hüterin eines Familienerbes, das weit über Generationen hinausstrahlt. Ihre Pfeifen sind nicht nur Produkte, sondern Zeugen einer Geschichte, die von Mut, Beständigkeit und Leidenschaft erzählt.",
+      "closing": "Die Zukunft ist klar: die Tradition bewahren, die Welt erobern – Pfeife für Pfeife."
+    },
+
+    "highlights": {
+      "h1": "Handgemacht",
+      "h1v": "Stück für Stück",
+      "h2": "Tradition",
+      "h2v": "3 Generationen",
+      "h3": "Global",
+      "h3v": "Sammler weltweit"
+    },
+
+    "products": {
+      "title": "Produkte & Erfolge",
+      "lightersTitle": "Feuerzeuge",
+      "l1": "Zuverlässig im Alltag",
+      "l2": "Premium-Finish & Haptik",
+      "l3": "Für Langlebigkeit gebaut",
+      "l4": "Qualitätskontrolle mit Handwerksanspruch",
+      "lightersParagraph": "Für täglichen Einsatz entwickelt — mit sauberem Finish und hochwertigem Gefühl.",
+
+      "pipesTitle": "Pfeifenhandwerk",
+      "p1": "Jede Pfeife entsteht mit Geduld, Präzision und Respekt vor dem Material — ein Prozess, der über Jahrzehnte verfeinert wurde.",
+      "p2": "Von der Auswahl bis zum Finish bewahren wir die Seele des traditionellen Handwerks und verbinden sie mit moderner Präzision.",
+
+      "privateLabelTitle": "Private Label",
+      "privateLabelText": "Wir fertigen außerdem Private-Label-Pfeifen für international renommierte Häuser — ein stilles Zeichen höchster Anerkennung."
+    },
+
+    "quote": {
+      "imageAlt": "Hintergrund Handwerk",
+      "text": "Eine Pfeife ist nicht nur ein Objekt — sie ist der stille Begleiter des Denkens, von Hand geformt und von Tradition geführt.",
+      "author": "Hanseatic Pipes"
+    },
+
+    "cta": {
+      "footerText": "Erleben Sie echtes Handwerk",
+      "footerButton": "Kontakt"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "home": {
+    "hero_title": "Deutsche Handwerkskunst für Kenner",
+    "view_collection": "Kollektion ansehen",
+
+    "pillar_1_title": "Traditionelles Handwerk",
+    "pillar_1_desc": "Von Hand gefertigt, Stück für Stück.",
+    "pillar_2_title": "Premium Materialien",
+    "pillar_2_desc": "Holz, Metall, Hybrid & Luxus.",
+    "pillar_3_title": "Weltweit geschätzt",
+    "pillar_3_desc": "Sammler & Private-Label-Produktion.",
+
+    "section1_title": "Eine Werkstatt, in der jedes Detail zählt",
+    "section1_desc": "Vom Formen bis zur Veredelung tragen unsere Pfeifen eine Handschrift der Präzision – eine unverwechselbare Verbindung aus Tradition und Raffinesse.",
+    "section1_point1": "Handgefertigte Veredelung & Qualitätskontrolle",
+    "section1_point2": "Private-Label-Produktion für renommierte Marken",
+    "section1_point3": "Entworfen für Sammler und tägliche Genießer",
+    "section1_cta": "Katalog entdecken",
+
+    "featured_title": "Ausgewählte Highlights",
+    "featured_subtitle": "Eine kuratierte Vorschau aus unserem Live-Katalog – direkt aus der Werkstatt.",
+    "featured_viewall": "Alle ansehen",
+
+    "badge_new": "NEU",
+    "tap_preview": "Tippen zum Vorschauen",
+    "no_desc": "Handgefertigte Pfeife mit Premium-Veredelung.",
+
+    "quote": "Tradition ist keine Erinnerung – sie ist ein Versprechen. Jede Pfeife trägt ein Stück Geschichte.",
+    "quote_author": "Hanseatic Pipes",
+
+    "cms_badge": "CMS"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "home": {
+    "hero_title": "German Craftsmanship for Connoisseurs",
+    "view_collection": "View Collection",
+
+    "pillar_1_title": "Heritage Craft",
+    "pillar_1_desc": "Handmade, piece by piece.",
+    "pillar_2_title": "Premium Materials",
+    "pillar_2_desc": "Wood, metal, hybrid luxury.",
+    "pillar_3_title": "Trusted Worldwide",
+    "pillar_3_desc": "Collectors & private label.",
+
+    "section1_title": "A Workshop Where Every Detail Matters",
+    "section1_desc": "From shaping to finishing, our pipes carry a signature of precision—an unmistakable blend of tradition and refinement.",
+    "section1_point1": "Handcrafted finishing and quality control",
+    "section1_point2": "Private label production for renowned brands",
+    "section1_point3": "Designed for collectors and daily connoisseurs",
+    "section1_cta": "Explore the catalogue",
+
+    "featured_title": "Featured Selection",
+    "featured_subtitle": "A curated preview from our live catalogue—fresh from the workshop.",
+    "featured_viewall": "View All",
+
+    "badge_new": "NEW",
+    "tap_preview": "Tap to preview",
+    "no_desc": "Handcrafted pipe with premium finishing.",
+
+    "quote": "Tradition is not a memory—it’s a promise. Every pipe carries a piece of history.",
+    "quote_author": "Hanseatic Pipes",
+
+    "cms_badge": "CMS"
+  }
+}
