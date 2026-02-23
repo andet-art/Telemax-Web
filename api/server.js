@@ -25,11 +25,11 @@ const app = express();
    CORS
 ================================ */
 const allowedOrigins = [
-  process.env.CLIENT_URL || "http://localhost:3000",
-  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "http://localhost:3000",
   "http://138.68.248.164",
   "http://138.68.248.164:3000",
-  "http://138.68.248.164:5001",
+  "http://138.68.248.164:4000",
 ].filter(Boolean);
 
 app.use(
@@ -56,7 +56,6 @@ app.use(express.urlencoded({ extended: true }));
 
 /* ================================
    STATIC IMAGES
-   URL: http://YOUR_IP:4000/photos/3273001.png
 ================================ */
 app.use("/photos", express.static(path.join(__dirname, "public/photos")));
 
@@ -66,7 +65,7 @@ app.use("/photos", express.static(path.join(__dirname, "public/photos")));
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "TelemaxWeb API running on port 4000",
+    message: `TelemaxWeb API running on port ${process.env.PORT || 4000}`,
   });
 });
 
@@ -99,7 +98,7 @@ app.use(errorHandler);
 /* ================================
    START SERVER
 ================================ */
-const PORT = 4000; // fixed port 4000 to avoid confusion
+const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
   console.log(`✓ Server running on port ${PORT}`);
