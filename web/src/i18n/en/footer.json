@@ -1,0 +1,19 @@
+{
+  "footer": {
+    "description": "Premium tobacco pipes and accessories — crafted with precision and delivered with care.",
+    "links": {
+      "title": "Quick Links",
+      "home": "Home",
+      "about": "About",
+      "products": "Products",
+      "contact": "Contact"
+    },
+    "contact": {
+      "title": "Contact",
+      "location": "Skopje, North Macedonia",
+      "phone": "+389 XX XXX XXX",
+      "email": "info@telemax.com"
+    },
+    "rights": "Telemax. All rights reserved."
+  }
+}

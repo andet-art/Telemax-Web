@@ -15,13 +15,14 @@ const Footer = () => {
       className="bg-[#16100b] text-stone-400 py-14 px-6 select-none border-t border-[#2d221a]"
     >
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
-
         {/* Company Section with Logo */}
         <div>
+          {/* Put your logo here: web/public/assets/telemax-logo.png */}
           <img
             src="/assets/telemax-logo.png"
-            alt="Company Logo"
+            alt="Telemax Logo"
             className="h-20 w-auto object-contain mb-6"
+            draggable={false}
           />
 
           <p className="text-stone-400 max-w-sm leading-relaxed mb-6">
@@ -29,10 +30,15 @@ const Footer = () => {
           </p>
 
           <div className="flex space-x-5">
-            {[FaFacebookF, FaInstagram, FaTwitter, FaLinkedinIn].map((Icon, idx) => (
+            {[
+              { Icon: FaFacebookF, href: "#" },
+              { Icon: FaInstagram, href: "#" },
+              { Icon: FaTwitter, href: "#" },
+              { Icon: FaLinkedinIn, href: "#" },
+            ].map(({ Icon, href }, idx) => (
               <a
                 key={idx}
-                href="#"
+                href={href}
                 className="text-stone-400 hover:text-amber-600 transition-colors"
                 aria-label="Social Link"
               >
@@ -54,16 +60,20 @@ const Footer = () => {
                 {t("footer.links.home")}
               </Link>
             </li>
+
             <li>
               <Link to="/about" className="hover:text-amber-600 transition-colors">
                 {t("footer.links.about")}
               </Link>
             </li>
+
+            {/* If your products page route is /orders, this is correct */}
             <li>
-              <Link to="/products" className="hover:text-amber-600 transition-colors">
+              <Link to="/orders" className="hover:text-amber-600 transition-colors">
                 {t("footer.links.products")}
               </Link>
             </li>
+
             <li>
               <Link to="/contact" className="hover:text-amber-600 transition-colors">
                 {t("footer.links.contact")}

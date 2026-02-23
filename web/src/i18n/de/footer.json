@@ -1,0 +1,19 @@
+{
+  "footer": {
+    "description": "Premium-Tabakpfeifen und Zubehör — präzise gefertigt und mit Sorgfalt geliefert.",
+    "links": {
+      "title": "Schnellzugriff",
+      "home": "Startseite",
+      "about": "Über uns",
+      "products": "Produkte",
+      "contact": "Kontakt"
+    },
+    "contact": {
+      "title": "Kontakt",
+      "location": "Skopje, Nordmazedonien",
+      "phone": "+389 XX XXX XXX",
+      "email": "info@telemax.com"
+    },
+    "rights": "Telemax. Alle Rechte vorbehalten."
+  }
+}

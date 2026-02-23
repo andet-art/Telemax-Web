@@ -25,7 +25,6 @@ const Navbar = () => {
   const [showNavbar, setShowNavbar] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [shrink, setShrink] = useState(false);
-
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -67,10 +66,10 @@ const Navbar = () => {
   };
 
   const links = [
-    { to: "/home", label: t("home") },
-    { to: "/about", label: t("about") },
-    { to: "/orders", label: t("orders") },
-    { to: "/contact", label: t("contact") },
+    { to: "/home", label: t("navbar.links.home") },
+    { to: "/about", label: t("navbar.links.about") },
+    { to: "/orders", label: t("navbar.links.orders") },
+    { to: "/contact", label: t("navbar.links.contact") },
   ];
 
   return (
@@ -107,8 +106,6 @@ const Navbar = () => {
 
         .brand-logo:hover { color: #f5dfa5; }
 
-        .brand-pipe-icon { width: 20px; height: 20px; opacity: 0.85; }
-
         .nav-link {
           font-family: 'Cormorant Garamond', serif;
           font-size: 0.95rem;
@@ -137,10 +134,7 @@ const Navbar = () => {
         .nav-link.active::after { width: 100%; }
         .nav-link.active { color: #e8c98a; }
 
-        .ornament { color: rgba(180,120,60,0.35); font-size: 0.7rem; letter-spacing: 0.3em; }
-
         .lang-btn {
-          font-family: 'Cormorant Garamond', serif;
           font-size: 0.8rem;
           letter-spacing: 0.18em;
           text-transform: uppercase;
@@ -148,54 +142,8 @@ const Navbar = () => {
           border: 1px solid rgba(180,120,60,0.2);
           padding: 4px 10px;
           border-radius: 2px;
-          transition: all 0.25s ease;
           background: transparent;
           cursor: pointer;
-        }
-
-        .lang-btn:hover {
-          color: #e8c98a;
-          border-color: rgba(200,146,42,0.5);
-          background: rgba(180,120,60,0.07);
-        }
-
-        .btn-outline-warm {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 0.85rem;
-          letter-spacing: 0.1em;
-          border: 1px solid rgba(180,120,60,0.3);
-          background: transparent;
-          color: #a8917a;
-          padding: 6px 16px;
-          border-radius: 2px;
-          transition: all 0.25s ease;
-          cursor: pointer;
-        }
-
-        .btn-outline-warm:hover {
-          border-color: rgba(200,146,42,0.6);
-          color: #e8c98a;
-          background: rgba(180,120,60,0.08);
-        }
-
-        .btn-gold {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 0.85rem;
-          letter-spacing: 0.1em;
-          background: linear-gradient(135deg, #8b5e1a 0%, #c8922a 50%, #a0711f 100%);
-          color: #f5e6c8;
-          padding: 6px 18px;
-          border-radius: 2px;
-          border: 1px solid rgba(200,146,42,0.4);
-          transition: all 0.3s ease;
-          cursor: pointer;
-          box-shadow: 0 2px 12px rgba(180,120,40,0.2);
-        }
-
-        .btn-gold:hover {
-          background: linear-gradient(135deg, #a0711f 0%, #d9a030 50%, #b07820 100%);
-          box-shadow: 0 4px 20px rgba(200,146,42,0.35);
-          transform: translateY(-1px);
         }
 
         .mobile-menu-bg {
@@ -206,28 +154,6 @@ const Navbar = () => {
           );
           border-top: 1px solid rgba(180,120,60,0.12);
         }
-
-        .mobile-link {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 1.1rem;
-          font-weight: 400;
-          letter-spacing: 0.15em;
-          text-transform: uppercase;
-          color: #7a6550;
-          border-bottom: 1px solid rgba(180,120,60,0.08);
-          padding: 14px 0;
-          display: block;
-          transition: color 0.25s;
-        }
-
-        .mobile-link.active,
-        .mobile-link:hover { color: #e8c98a; }
-
-        .decorative-rule {
-          height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(200,146,42,0.4), transparent);
-          margin: 12px 0;
-        }
       `}</style>
 
       <motion.nav
@@ -236,32 +162,22 @@ const Navbar = () => {
         transition={{ duration: 0.35, ease: "easeInOut" }}
       >
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
-          {/* Logo */}
           <Link to="/home" className="brand-logo" onClick={scrollToTop}>
-            <svg className="brand-pipe-icon" viewBox="0 0 40 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 18 C2 18, 8 18, 12 14 C16 10, 18 6, 24 6 L34 6" stroke="#c8922a" strokeWidth="2.5" strokeLinecap="round"/>
-              <rect x="30" y="3" width="8" height="10" rx="2" stroke="#c8922a" strokeWidth="1.8" fill="none"/>
-              <path d="M1 18 L5 18" stroke="#c8922a" strokeWidth="3" strokeLinecap="round"/>
-              <path d="M32 1 Q35 0 36 3" stroke="#c8922a" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
-            </svg>
             Pfeifenhaus
           </Link>
 
-          {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-10">
             {links.map((link) => (
-              <motion.div key={link.to} whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 300 }}>
-                <button
-                  onClick={() => go(link.to)}
-                  className={`nav-link ${location.pathname === link.to ? "active" : ""}`}
-                >
-                  {link.label}
-                </button>
-              </motion.div>
+              <button
+                key={link.to}
+                onClick={() => go(link.to)}
+                className={`nav-link ${location.pathname === link.to ? "active" : ""}`}
+              >
+                {link.label}
+              </button>
             ))}
           </div>
 
-          {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-3">
             <button className="lang-btn" onClick={toggleLanguage}>
               {currentLang === "de" ? "EN" : "DE"}
@@ -271,71 +187,41 @@ const Navbar = () => {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsProfileOpen((v) => !v)}
-                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-stone-700 hover:border-amber-500/60 bg-stone-900/50 hover:bg-stone-800/60 transition-all duration-200 group"
+                  className="px-3 py-2 border border-stone-700 bg-stone-900 rounded-lg text-stone-300 hover:border-amber-500"
                 >
-                  <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-                    <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wide">
-                      {user.first_name?.[0]}
-                      {user.last_name?.[0]}
-                    </span>
-                  </div>
-                  <span className="text-sm font-medium text-stone-300 group-hover:text-white transition-colors">
-                    {user.first_name}
-                  </span>
-                  <svg
-                    className={`w-3.5 h-3.5 text-stone-500 group-hover:text-stone-300 transition-all duration-200 ${
-                      isProfileOpen ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  Account
                 </button>
 
                 <AnimatePresence>
                   {isProfileOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                      transition={{ duration: 0.15, ease: "easeOut" }}
-                      className="absolute right-0 mt-2 w-56 bg-stone-950 border border-stone-800/80 rounded-xl shadow-2xl shadow-black/40 overflow-hidden"
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="absolute right-0 mt-2 w-56 bg-stone-950 border border-stone-800 rounded-xl shadow-2xl"
                     >
-                      <div className="px-4 py-3.5 border-b border-stone-800/80">
-                        <p className="text-sm font-semibold text-white tracking-tight">
-                          {user.first_name} {user.last_name}
-                        </p>
-                        <p className="text-xs text-stone-500 mt-0.5">{user.email}</p>
+                      <div className="py-2">
+                        <button
+                          onClick={() => go("/profile/overview")}
+                          className="block w-full text-left px-4 py-2 text-sm text-stone-200 hover:bg-stone-800"
+                        >
+                          {t("navbar.profile.overview", { defaultValue: "Overview" })}
+                        </button>
+
+                        <button
+                          onClick={() => go("/profile/settings")}
+                          className="block w-full text-left px-4 py-2 text-sm text-stone-200 hover:bg-stone-800"
+                        >
+                          {t("navbar.profile.settings", { defaultValue: "Settings" })}
+                        </button>
                       </div>
 
-                      <div className="py-1.5">
-                        {[
-                          { label: "Overview", path: "/profile/overview" },
-                          { label: "Addresses", path: "/profile/addresses" },
-                          { label: "Settings", path: "/profile/settings" },
-                        ].map((item) => (
-                          <button
-                            key={item.path}
-                            onClick={() => go(item.path)}
-                            className="flex flex-col px-4 py-2.5 w-full text-left hover:bg-stone-800/40 transition-colors group"
-                          >
-                            <span className="text-sm font-medium text-stone-200 group-hover:text-white transition-colors">
-                              {item.label}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="border-t border-stone-800/80 py-1.5">
+                      <div className="border-t border-stone-800">
                         <button
                           onClick={handleLogout}
-                          className="flex items-center gap-2 px-4 py-2.5 w-full text-left hover:bg-red-500/8 transition-colors group"
+                          className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10"
                         >
-                          <span className="text-sm font-medium text-stone-400 group-hover:text-red-400 transition-colors">
-                            {t("logout")}
-                          </span>
+                          {t("navbar.actions.logout", { defaultValue: "Logout" })}
                         </button>
                       </div>
                     </motion.div>
@@ -344,77 +230,22 @@ const Navbar = () => {
               </div>
             ) : (
               <>
-                <Button variant="outline" className="hover:border-amber-500" onClick={() => go("/signin")}>
-                  {t("signin")}
+                <Button variant="outline" onClick={() => go("/signin")}>
+                  {t("navbar.actions.signin", { defaultValue: "Sign in" })}
                 </Button>
-                <Button variant="default" className="hover:bg-amber-700" onClick={() => go("/signup")}>
-                  {t("join")}
+                <Button onClick={() => go("/signup")}>
+                  {t("navbar.actions.join", { defaultValue: "Join" })}
                 </Button>
               </>
             )}
           </div>
 
-          {/* Mobile Toggle */}
           <div className="md:hidden">
             <button onClick={() => setOpen((v) => !v)} className="text-white">
               {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        <AnimatePresence>
-          {open && (
-            <motion.div
-              className="mobile-menu-bg md:hidden px-6 pb-6"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              style={{ overflow: "hidden" }}
-            >
-              <div className="decorative-rule" />
-
-              {links.map((link) => (
-                <button
-                  key={link.to}
-                  onClick={() => go(link.to)}
-                  className={`mobile-link w-full text-left ${location.pathname === link.to ? "active" : ""}`}
-                >
-                  {link.label}
-                </button>
-              ))}
-
-              <div className="decorative-rule" />
-
-              <div className="flex items-center gap-3 pt-3 flex-wrap">
-                <button className="lang-btn" onClick={toggleLanguage}>
-                  {currentLang === "de" ? "EN" : "DE"}
-                </button>
-
-                {user ? (
-                  <>
-                    <button className="btn-outline-warm" onClick={() => go("/profile/overview")}>
-                      {t("profile")}
-                    </button>
-                    <button className="btn-gold" onClick={handleLogout}>
-                      {t("logout")}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button className="btn-outline-warm" onClick={() => go("/signin")}>
-                      {t("signin")}
-                    </button>
-                    <button className="btn-gold" onClick={() => go("/signup")}>
-                      {t("join")}
-                    </button>
-                  </>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.nav>
     </>
   );
