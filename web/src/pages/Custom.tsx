@@ -7,27 +7,22 @@ import {
   ArrowRight,
   CheckCircle,
   Sparkles,
-  Wand2,
-  RotateCcw,
   ShoppingCart,
   ShieldCheck,
+  RotateCcw,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCart } from "../context/CartContext";
 
+// ✅ NEW: step components (DB-driven)
+import HeadPicker, { type PipePart as DbPipePart } from "@/pages/custom/Head";
+import RingPicker from "@/pages/custom/Ring";
+import TailPicker from "@/pages/custom/Tail";
+
 /** ---------------------------
  *  TYPES
  *  --------------------------*/
-type PipePart = {
-  id: string;
-  name: string;
-  material: string;
-  vibe: string; // storytelling flavor
-  price: number;
-  image: string; // local or remote
-  accent?: "gold" | "ember" | "ice";
-};
-
+type PipePart = DbPipePart;
 type BuildStep = 1 | 2 | 3;
 
 /** ---------------------------
@@ -44,126 +39,16 @@ function fmtMoney(amount: number, currency = "EUR") {
   }
 }
 
-/** ---------------------------
- *  SAMPLE PARTS (swap later with DB)
- *  Keep images 4:3-ish for best look
- *  --------------------------*/
-const HEADS: PipePart[] = [
-  {
-    id: "h-01",
-    name: "Classic Chamber",
-    material: "Briar",
-    vibe: "Balanced pull, timeless silhouette.",
-    price: 34,
-    image:
-      "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=900&h=675&fit=crop",
-    accent: "gold",
-  },
-  {
-    id: "h-02",
-    name: "Deep Ember Bowl",
-    material: "Briar",
-    vibe: "Slow burn, deeper heat pocket.",
-    price: 42,
-    image:
-      "https://images.unsplash.com/photo-1455587734955-081b22074882?w=900&h=675&fit=crop",
-    accent: "ember",
-  },
-  {
-    id: "h-03",
-    name: "Slim Artisan",
-    material: "Briar",
-    vibe: "Elegant profile, light in hand.",
-    price: 38,
-    image:
-      "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?w=900&h=675&fit=crop",
-    accent: "ice",
-  },
-];
-
-const RINGS: PipePart[] = [
-  {
-    id: "r-01",
-    name: "Gold Heritage Ring",
-    material: "Brass",
-    vibe: "Warm shine — premium finish.",
-    price: 18,
-    image:
-      "https://images.unsplash.com/photo-1520975682031-a1427e40e0b5?w=900&h=675&fit=crop",
-    accent: "gold",
-  },
-  {
-    id: "r-02",
-    name: "Smoked Alloy Ring",
-    material: "Steel",
-    vibe: "Industrial edge, dark tone.",
-    price: 14,
-    image:
-      "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=900&h=675&fit=crop",
-    accent: "ember",
-  },
-  {
-    id: "r-03",
-    name: "Ice Line Ring",
-    material: "Aluminum",
-    vibe: "Clean lines, subtle contrast.",
-    price: 12,
-    image:
-      "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=900&h=675&fit=crop",
-    accent: "ice",
-  },
-];
-
-const TAILS: PipePart[] = [
-  {
-    id: "t-01",
-    name: "Velvet Stem",
-    material: "Acrylic",
-    vibe: "Comfort grip, smooth draw.",
-    price: 22,
-    image:
-      "https://images.unsplash.com/photo-1520974735194-6b4bdbd6c8ac?w=900&h=675&fit=crop",
-    accent: "gold",
-  },
-  {
-    id: "t-02",
-    name: "Night Stem",
-    material: "Ebonite",
-    vibe: "Deep matte — stealth premium.",
-    price: 26,
-    image:
-      "https://images.unsplash.com/photo-1526481280695-3c687fd5432c?w=900&h=675&fit=crop",
-    accent: "ember",
-  },
-  {
-    id: "t-03",
-    name: "Crystal Stem",
-    material: "Acrylic",
-    vibe: "Bright edge, modern finish.",
-    price: 20,
-    image:
-      "https://images.unsplash.com/photo-1520975958220-1c4f8e3f01e2?w=900&h=675&fit=crop",
-    accent: "ice",
-  },
-];
+function resolvePhoto(photo: string) {
+  if (!photo) return "";
+  if (photo.startsWith("http://") || photo.startsWith("https://")) return photo;
+  const base = (import.meta as any).env?.VITE_API_URL || "";
+  return `${String(base).replace(/\/$/, "")}/${photo.replace(/^\//, "")}`;
+}
 
 /** ---------------------------
  *  SMALL UI HELPERS
  *  --------------------------*/
-const Glow = ({ accent }: { accent?: PipePart["accent"] }) => {
-  const cls =
-    accent === "ember"
-      ? "from-[#ffb26b]/0 via-[#ff8a3d]/10 to-[#ffb26b]/0"
-      : accent === "ice"
-      ? "from-[#a8d8ff]/0 via-[#7cc6ff]/10 to-[#a8d8ff]/0"
-      : "from-[#c9a36a]/0 via-[#c9a36a]/10 to-[#c9a36a]/0";
-  return (
-    <div
-      className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-r ${cls}`}
-    />
-  );
-};
-
 const StepPill = ({
   step,
   active,
@@ -206,12 +91,12 @@ export default function Costum() {
   const [toast, setToast] = useState<string | null>(null);
 
   const total = useMemo(
-    () => (head?.price || 0) + (ring?.price || 0) + (tail?.price || 0),
+    () => Number(head?.price || 0) + Number(ring?.price || 0) + Number(tail?.price || 0),
     [head, ring, tail]
   );
 
   const accent: PipePart["accent"] = useMemo(
-    () => tail?.accent || ring?.accent || head?.accent || "gold",
+    () => (tail?.accent || ring?.accent || head?.accent || "gold") as any,
     [head, ring, tail]
   );
 
@@ -221,12 +106,10 @@ export default function Costum() {
     return !!tail;
   }, [step, head, ring, tail]);
 
-  const canFinish = useMemo(() => !!head && !!ring && !!tail && pipeName.trim(), [
-    head,
-    ring,
-    tail,
-    pipeName,
-  ]);
+  const canFinish = useMemo(
+    () => !!head && !!ring && !!tail && pipeName.trim(),
+    [head, ring, tail, pipeName]
+  );
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -264,7 +147,7 @@ export default function Costum() {
       price: total,
       quantity: 1,
       currency: "EUR",
-      image: head.image,
+      image: resolvePhoto(head.photo), // ✅ head photo
       head,
       ring,
       tail,
@@ -274,40 +157,6 @@ export default function Costum() {
     navigate("/cart");
   }, [addToCart, canFinish, head, ring, tail, navigate, pipeName, showToast, t, total]);
 
-  const partsForStep = useMemo(() => {
-    if (step === 1) return HEADS;
-    if (step === 2) return RINGS;
-    return TAILS;
-  }, [step]);
-
-  const selectedForStep = useMemo(() => {
-    if (step === 1) return head;
-    if (step === 2) return ring;
-    return tail;
-  }, [step, head, ring, tail]);
-
-  const pick = useCallback(
-    (p: PipePart) => {
-      if (step === 1) setHead(p);
-      if (step === 2) setRing(p);
-      if (step === 3) setTail(p);
-
-      // tiny “adventure” feedback
-      showToast(
-        step === 1
-          ? "Bowl chosen. The chamber feels right."
-          : step === 2
-          ? "Ring locked. The build tightens."
-          : "Stem attached. Your pipe is complete."
-      );
-
-      // auto advance for “adventure” pacing
-      if (step === 1) setStep(2);
-      else if (step === 2) setStep(3);
-    },
-    [showToast, step]
-  );
-
   const heroTitle = useMemo(() => {
     if (step === 1) return "Chapter I — Choose the Bowl";
     if (step === 2) return "Chapter II — Seal the Craft";
@@ -315,8 +164,10 @@ export default function Costum() {
   }, [step]);
 
   const heroSub = useMemo(() => {
-    if (step === 1) return "Start with the heart of the pipe. Pick a chamber that fits your ritual.";
-    if (step === 2) return "The ring is the signature. Choose the accent that defines the build.";
+    if (step === 1)
+      return "Start with the heart of the pipe. Pick a chamber that fits your ritual.";
+    if (step === 2)
+      return "The ring is the signature. Choose the accent that defines the build.";
     return "Final touch. The stem decides comfort and character.";
   }, [step]);
 
@@ -482,94 +333,42 @@ export default function Costum() {
                 </div>
               </div>
 
+              {/* ✅ NEW: render per-step picker components */}
               <div className="p-4 sm:p-6">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={`step-${step}`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.35 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
-                  >
-                    {partsForStep.map((p, idx) => {
-                      const isSelected = selectedForStep?.id === p.id;
-                      return (
-                        <motion.button
-                          key={p.id}
-                          type="button"
-                          onClick={() => pick(p)}
-                          className={`group relative text-left rounded-2xl border overflow-hidden transition shadow-xl ${
-                            isSelected
-                              ? "border-[#c9a36a]/60 bg-[#c9a36a]/10"
-                              : "border-white/10 bg-black/20 hover:border-[#c9a36a]/35"
-                          }`}
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.03, duration: 0.4 }}
-                          whileHover={{ y: -4 }}
-                          whileTap={{ scale: 0.99 }}
-                        >
-                          <Glow accent={p.accent} />
-                          <div className="relative z-10">
-                            <div className="aspect-[4/3] bg-black/40">
-                              <img
-                                src={p.image}
-                                alt={p.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                loading="lazy"
-                              />
-                            </div>
+                {step === 1 && (
+                  <HeadPicker
+                    value={head}
+                    onChange={(p) => {
+                      setHead(p);
+                      showToast("Bowl chosen. The chamber feels right.");
+                      setStep(2);
+                    }}
+                    onToast={showToast}
+                  />
+                )}
 
-                            <div className="p-4">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="text-lg font-bold line-clamp-1 group-hover:text-[#c9a36a] transition-colors">
-                                    {p.name}
-                                  </div>
-                                  <div className="text-xs text-stone-400">
-                                    {p.material}
-                                  </div>
-                                </div>
+                {step === 2 && (
+                  <RingPicker
+                    value={ring}
+                    onChange={(p) => {
+                      setRing(p);
+                      showToast("Ring locked. The build tightens.");
+                      setStep(3);
+                    }}
+                    onToast={showToast}
+                  />
+                )}
 
-                                <div className="shrink-0 text-sm font-bold text-[#c9a36a]">
-                                  {fmtMoney(p.price, "EUR")}
-                                </div>
-                              </div>
-
-                              <div className="mt-3 text-sm text-stone-300 line-clamp-2">
-                                {p.vibe}
-                              </div>
-
-                              <div className="mt-4 flex items-center justify-between">
-                                <div
-                                  className={`text-xs px-2 py-1 rounded-lg border ${accentChip}`}
-                                >
-                                  {p.accent === "ember"
-                                    ? "Ember"
-                                    : p.accent === "ice"
-                                    ? "Ice"
-                                    : "Gold"}
-                                </div>
-
-                                <div className="text-xs text-stone-400 inline-flex items-center gap-1">
-                                  <Wand2 className="w-3.5 h-3.5" />
-                                  Choose
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {isSelected && (
-                            <div className="absolute top-3 right-3 z-20 bg-black/60 border border-white/10 rounded-full p-2">
-                              <CheckCircle className="w-5 h-5 text-[#c9a36a]" />
-                            </div>
-                          )}
-                        </motion.button>
-                      );
-                    })}
-                  </motion.div>
-                </AnimatePresence>
+                {step === 3 && (
+                  <TailPicker
+                    value={tail}
+                    onChange={(p) => {
+                      setTail(p);
+                      showToast("Stem attached. Your pipe is complete.");
+                    }}
+                    onToast={showToast}
+                  />
+                )}
               </div>
             </motion.section>
 
@@ -585,7 +384,6 @@ export default function Costum() {
                 <div className="text-xl font-bold">Preview & Finish</div>
               </div>
 
-              {/* Preview “adventure stack” */}
               <div className="p-4 sm:p-6 space-y-4">
                 <div className="rounded-2xl border border-white/10 bg-black/25 overflow-hidden">
                   <div className="p-3 border-b border-white/10 flex items-center justify-between">
@@ -595,12 +393,11 @@ export default function Costum() {
 
                   <div className="p-4">
                     <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-white/10 bg-black/40">
-                      {/* Layered images for “build feeling” */}
                       <AnimatePresence>
-                        {head?.image && (
+                        {head?.photo && (
                           <motion.img
                             key={`head-${head.id}`}
-                            src={head.image}
+                            src={resolvePhoto(head.photo)}
                             alt={head.name}
                             className="absolute inset-0 w-full h-full object-cover"
                             initial={{ opacity: 0, y: 18, scale: 1.02 }}
@@ -612,10 +409,10 @@ export default function Costum() {
                       </AnimatePresence>
 
                       <AnimatePresence>
-                        {ring?.image && (
+                        {ring?.photo && (
                           <motion.img
                             key={`ring-${ring.id}`}
-                            src={ring.image}
+                            src={resolvePhoto(ring.photo)}
                             alt={ring.name}
                             className="absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-70"
                             initial={{ opacity: 0, x: -18, scale: 1.03 }}
@@ -627,10 +424,10 @@ export default function Costum() {
                       </AnimatePresence>
 
                       <AnimatePresence>
-                        {tail?.image && (
+                        {tail?.photo && (
                           <motion.img
                             key={`tail-${tail.id}`}
-                            src={tail.image}
+                            src={resolvePhoto(tail.photo)}
                             alt={tail.name}
                             className="absolute inset-0 w-full h-full object-cover opacity-70"
                             initial={{ opacity: 0, y: -18, scale: 1.03 }}
@@ -650,9 +447,7 @@ export default function Costum() {
                             {fmtMoney(total, "EUR")}
                           </div>
                         </div>
-                        <div
-                          className={`shrink-0 text-xs px-2 py-1 rounded-lg border ${accentChip}`}
-                        >
+                        <div className={`shrink-0 text-xs px-2 py-1 rounded-lg border ${accentChip}`}>
                           {accent === "ember" ? "Ember" : accent === "ice" ? "Ice" : "Gold"}
                         </div>
                       </div>
@@ -661,27 +456,20 @@ export default function Costum() {
                     <div className="mt-4 grid grid-cols-1 gap-3">
                       <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                         <div className="text-xs text-stone-400 mb-1">Bowl</div>
-                        <div className="text-sm text-stone-200 line-clamp-1">
-                          {previewText.h}
-                        </div>
+                        <div className="text-sm text-stone-200 line-clamp-1">{previewText.h}</div>
                       </div>
                       <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                         <div className="text-xs text-stone-400 mb-1">Ring</div>
-                        <div className="text-sm text-stone-200 line-clamp-1">
-                          {previewText.r}
-                        </div>
+                        <div className="text-sm text-stone-200 line-clamp-1">{previewText.r}</div>
                       </div>
                       <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                         <div className="text-xs text-stone-400 mb-1">Stem</div>
-                        <div className="text-sm text-stone-200 line-clamp-1">
-                          {previewText.ta}
-                        </div>
+                        <div className="text-sm text-stone-200 line-clamp-1">{previewText.ta}</div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Name & actions */}
                 <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                   <div className="text-sm text-stone-300 mb-2">Name your pipe</div>
                   <input
@@ -716,8 +504,8 @@ export default function Costum() {
                   </div>
 
                   <div className="mt-4 text-xs text-stone-500 leading-relaxed">
-                    Tip: Choose the bowl first, then lock the ring, then finish with the stem —
-                    it’s designed as a 3-part build experience.
+                    Tip: Choose the bowl first, then lock the ring, then finish with the stem — it’s
+                    designed as a 3-part build experience.
                   </div>
                 </div>
               </div>
