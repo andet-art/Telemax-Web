@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Wand2,
   Layers,
+  Eye,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCart } from "../context/CartContext";
@@ -24,8 +25,6 @@ import TailPicker from "@/pages/custom/Tail";
 /** ---------------------------
  *  TYPES
  *  --------------------------*/
-
-// ✅ Fix red underlines by ensuring the type includes what we use here (price/accent/photo/name/id)
 type PipeAccent = "gold" | "ember" | "ice";
 
 type PipePart = DbPipePart & {
@@ -37,6 +36,16 @@ type PipePart = DbPipePart & {
 };
 
 type BuildStep = 1 | 2 | 3;
+
+type CustomDraft = {
+  head: PipePart;
+  ring: PipePart;
+  tail: PipePart;
+  total: number;
+  accent: PipeAccent;
+  currency: string;
+  createdAt: number;
+};
 
 /** ---------------------------
  *  MONEY
@@ -50,11 +59,14 @@ function fmtMoney(amount: number, currency = "EUR") {
   }
 }
 
-function resolvePhoto(photo?: string | null) {
-  if (!photo) return "";
-  if (photo.startsWith("http://") || photo.startsWith("https://")) return photo;
-  const base = (import.meta as any).env?.VITE_API_URL || "";
-  return `${String(base).replace(/\/$/, "")}/${String(photo).replace(/^\//, "")}`;
+/** ---------------------------
+ *  STORAGE
+ *  --------------------------*/
+const DRAFT_KEY = "telemax_custom_draft";
+function saveDraft(draft: CustomDraft) {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {}
 }
 
 /** ---------------------------
@@ -90,7 +102,7 @@ const StepPill = ({
 export default function Costum() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { addToCart, cartItemCount, cartTotal } = useCart();
+  const { cartItemCount, cartTotal } = useCart();
 
   const [step, setStep] = useState<BuildStep>(1);
 
@@ -98,11 +110,18 @@ export default function Costum() {
   const [ring, setRing] = useState<PipePart | null>(null);
   const [tail, setTail] = useState<PipePart | null>(null);
 
-  const [pipeName, setPipeName] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
   // ✅ Intro overlay on open
   const [introOpen, setIntroOpen] = useState(true);
+
+  /**
+   * ✅ IMPORTANT:
+   * catalog_types.id that should control which catalog_subtypes (colors) you fetch.
+   * For now we default to Avery (1) so the subtype colors show immediately.
+   * Later you can make a UI picker to change this.
+   */
+  const [selectedTypeId, setSelectedTypeId] = useState<number>(1);
 
   const total = useMemo(
     () => Number(head?.price || 0) + Number(ring?.price || 0) + Number(tail?.price || 0),
@@ -121,10 +140,7 @@ export default function Costum() {
     return !!tail;
   }, [step, head, ring, tail]);
 
-  const canFinish = useMemo(
-    () => !!head && !!ring && !!tail && pipeName.trim(),
-    [head, ring, tail, pipeName]
-  );
+  const isComplete = useMemo(() => !!head && !!ring && !!tail, [head, ring, tail]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -135,8 +151,10 @@ export default function Costum() {
     setHead(null);
     setRing(null);
     setTail(null);
-    setPipeName("");
     setStep(1);
+    try {
+      sessionStorage.removeItem(DRAFT_KEY);
+    } catch {}
     showToast(t("orders.toasts.reset") || "Reset.");
   }, [showToast, t]);
 
@@ -149,28 +167,26 @@ export default function Costum() {
     setStep((s) => (s === 3 ? 2 : s === 2 ? 1 : 1));
   }, []);
 
-  const confirmAdd = useCallback(() => {
-    if (!canFinish || !head || !ring || !tail) {
+  // ✅ Only at the end (after step 3) you go to preview
+  const goPreview = useCallback(() => {
+    if (!head || !ring || !tail) {
       showToast(t("orders.toasts.completeDesign") || "Complete the build first.");
       return;
     }
 
-    addToCart({
-      id: `custom-${Date.now()}`,
-      type: "custom",
-      name: pipeName.trim(),
-      price: total,
-      quantity: 1,
-      currency: "EUR",
-      image: resolvePhoto(head.photo), // head photo as main
+    const draft: CustomDraft = {
       head,
       ring,
       tail,
-    } as any);
+      total: Number(total || 0),
+      accent,
+      currency: "EUR",
+      createdAt: Date.now(),
+    };
 
-    showToast(t("orders.toasts.customAdded") || "Added to cart!");
-    navigate("/cart");
-  }, [addToCart, canFinish, head, ring, tail, navigate, pipeName, showToast, t, total]);
+    saveDraft(draft);
+    navigate("/custom/preview", { state: draft });
+  }, [accent, head, navigate, ring, showToast, t, tail, total]);
 
   const heroTitle = useMemo(() => {
     if (step === 1) return "Chapter I — Choose the Bowl";
@@ -185,13 +201,6 @@ export default function Costum() {
       return "The ring is the signature. Choose the accent that defines the build.";
     return "Final touch. The stem decides comfort and character.";
   }, [step]);
-
-  const previewText = useMemo(() => {
-    const h = head?.name || "—";
-    const r = ring?.name || "—";
-    const ta = tail?.name || "—";
-    return { h, r, ta };
-  }, [head, ring, tail]);
 
   const accentChip =
     accent === "ember"
@@ -268,11 +277,15 @@ export default function Costum() {
                       Build your own premium pipe
                     </h2>
                     <p className="mt-3 text-stone-300 leading-relaxed">
-                      You’ll customize your pipe in <span className="text-white font-semibold">3 steps</span>:
-                      pick a <span className="text-white font-semibold">bowl</span>, lock a{" "}
+                      You’ll customize your pipe in{" "}
+                      <span className="text-white font-semibold">3 steps</span>: pick a{" "}
+                      <span className="text-white font-semibold">bowl</span>, lock a{" "}
                       <span className="text-white font-semibold">ring</span>, and finish with a{" "}
-                      <span className="text-white font-semibold">stem</span>.
-                      When you’re done, name your build and add it to cart.
+                      <span className="text-white font-semibold">stem</span>. <br />
+                      <span className="text-white font-semibold">
+                        There is NO preview during the steps.
+                      </span>{" "}
+                      Only after Step 3 you continue to Preview.
                     </p>
                   </div>
                 </div>
@@ -325,7 +338,7 @@ export default function Costum() {
                 </div>
 
                 <div className="mt-4 text-xs text-stone-500">
-                  Tip: If you want a fast build, select an item and it auto-advances to the next step.
+                  Tip: Select an item and it auto-advances to the next step.
                 </div>
               </div>
 
@@ -384,6 +397,45 @@ export default function Costum() {
             </div>
           </div>
 
+          {/* ✅ TYPE SELECTOR (so subtype colors work) */}
+          <div className="mb-5 flex items-center justify-center">
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
+              <span className="text-xs text-stone-400">Catalog type:</span>
+
+              <select
+                value={selectedTypeId}
+                onChange={(e) => {
+                  const id = Number(e.target.value || 1);
+                  setSelectedTypeId(id);
+
+                  // reset selections when switching type (recommended)
+                  setHead(null);
+                  setRing(null);
+                  setTail(null);
+                  setStep(1);
+
+                  showToast(`Type switched (id=${id}). Start with the bowl.`);
+                }}
+                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-stone-100 outline-none"
+              >
+                <option value={1}>Avery</option>
+                <option value={2}>Nautica</option>
+                <option value={3}>Hamburg Cumberland</option>
+                <option value={4}>Elbe</option>
+                <option value={6}>Mountain</option>
+                <option value={7}>Anchor</option>
+                <option value={8}>Leaf</option>
+                <option value={9}>Real Horn</option>
+                <option value={10}>Long Pipes / Lesepfeifen</option>
+                <option value={11}>4th July</option>
+                <option value={12}>Hanse</option>
+                <option value={13}>Morta / Mooreiche</option>
+                <option value={14}>Black Sand</option>
+                <option value={15}>Autumn</option>
+              </select>
+            </div>
+          </div>
+
           {/* Hero */}
           <motion.div
             className="mb-8 sm:mb-10 text-center"
@@ -420,33 +472,33 @@ export default function Costum() {
             </div>
           </motion.div>
 
-          {/* Content grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            {/* Left: selection */}
-            <motion.section
-              className="lg:col-span-8 rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f0b07]/85 to-[#1a120b]/85 backdrop-blur-lg shadow-2xl overflow-hidden"
-              initial={{ opacity: 0, x: -14 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.55 }}
-            >
-              <div className="p-4 sm:p-6 border-b border-white/10 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm text-stone-400">Choose one</div>
-                  <div className="text-xl font-bold">
-                    {step === 1 ? "Select a Bowl" : step === 2 ? "Select a Ring" : "Select a Stem"}
-                  </div>
+          {/* ONLY selection (no preview anywhere) */}
+          <motion.section
+            className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f0b07]/85 to-[#1a120b]/85 backdrop-blur-lg shadow-2xl overflow-hidden"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55 }}
+          >
+            <div className="p-4 sm:p-6 border-b border-white/10 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm text-stone-400">Choose one</div>
+                <div className="text-xl font-bold">
+                  {step === 1 ? "Select a Bowl" : step === 2 ? "Select a Ring" : "Select a Stem"}
                 </div>
+              </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={back}
-                    className="px-3 py-2 rounded-xl border border-white/10 bg-black/30 hover:bg-black/40 transition text-sm inline-flex items-center gap-2 disabled:opacity-50"
-                    disabled={step === 1}
-                    aria-disabled={step === 1}
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back
-                  </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={back}
+                  className="px-3 py-2 rounded-xl border border-white/10 bg-black/30 hover:bg-black/40 transition text-sm inline-flex items-center gap-2 disabled:opacity-50"
+                  disabled={step === 1}
+                  aria-disabled={step === 1}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </button>
+
+                {step !== 3 ? (
                   <button
                     onClick={next}
                     className={`px-3 py-2 rounded-xl border text-sm inline-flex items-center gap-2 transition disabled:opacity-50 ${
@@ -454,193 +506,82 @@ export default function Costum() {
                         ? "border-[#c9a36a]/30 bg-[#c9a36a]/15 hover:bg-[#c9a36a]/20 text-white"
                         : "border-white/10 bg-black/30 text-stone-500 cursor-not-allowed"
                     }`}
-                    disabled={!canNext || step === 3}
-                    aria-disabled={!canNext || step === 3}
+                    disabled={!canNext}
+                    aria-disabled={!canNext}
                   >
                     Next
                     <ArrowRight className="w-4 h-4" />
                   </button>
-                </div>
-              </div>
-
-              {/* per-step picker components */}
-              <div className="p-4 sm:p-6">
-                {step === 1 && (
-                  <HeadPicker
-                    value={head as any}
-                    onChange={(p: any) => {
-                      setHead(p);
-                      showToast("Bowl chosen. The chamber feels right.");
-                      setStep(2);
-                    }}
-                    onToast={showToast}
-                  />
+                ) : (
+                  <motion.button
+                    whileHover={isComplete ? { scale: 1.02 } : {}}
+                    whileTap={isComplete ? { scale: 0.98 } : {}}
+                    onClick={goPreview}
+                    disabled={!isComplete}
+                    className={`px-3 py-2 rounded-xl border text-sm inline-flex items-center gap-2 transition ${
+                      isComplete
+                        ? "border-[#c9a36a]/30 bg-[#c9a36a]/15 hover:bg-[#c9a36a]/20 text-white"
+                        : "border-white/10 bg-black/30 text-stone-500 cursor-not-allowed"
+                    }`}
+                  >
+                    Preview
+                    <Eye className="w-4 h-4" />
+                  </motion.button>
                 )}
 
-                {step === 2 && (
-                  <RingPicker
-                    value={ring as any}
-                    onChange={(p: any) => {
-                      setRing(p);
-                      showToast("Ring locked. The build tightens.");
-                      setStep(3);
-                    }}
-                    onToast={showToast}
-                  />
-                )}
-
-                {step === 3 && (
-                  <TailPicker
-                    value={tail as any}
-                    onChange={(p: any) => {
-                      setTail(p);
-                      showToast("Stem attached. Your pipe is complete.");
-                    }}
-                    onToast={showToast}
-                  />
-                )}
+                <button
+                  onClick={reset}
+                  className="px-3 py-2 rounded-xl border border-white/10 bg-black/30 text-stone-200 hover:bg-black/40 transition inline-flex items-center gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Reset
+                </button>
               </div>
-            </motion.section>
+            </div>
 
-            {/* Right: build preview + checkout */}
-            <motion.aside
-              className="lg:col-span-4 rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a120b]/85 to-[#2a1d13]/85 backdrop-blur-lg shadow-2xl overflow-hidden"
-              initial={{ opacity: 0, x: 14 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.55 }}
-            >
-              <div className="p-4 sm:p-6 border-b border-white/10">
-                <div className="text-sm text-stone-400">Your build</div>
-                <div className="text-xl font-bold">Preview & Finish</div>
-              </div>
+            {/* per-step picker components */}
+            <div className="p-4 sm:p-6">
+              {step === 1 && (
+                <HeadPicker
+                  typeId={selectedTypeId} // ✅ THIS IS THE FIX (fetch subtype colors)
+                  value={head as any}
+                  onChange={(p: any) => {
+                    setHead(p);
+                    showToast("Bowl chosen. The chamber feels right.");
+                    setStep(2);
+                  }}
+                  onToast={showToast}
+                />
+              )}
 
-              <div className="p-4 sm:p-6 space-y-4">
-                <div className="rounded-2xl border border-white/10 bg-black/25 overflow-hidden">
-                  <div className="p-3 border-b border-white/10 flex items-center justify-between">
-                    <div className="text-sm font-semibold">Assembled look</div>
-                    <div className="text-xs text-stone-400">Concept preview</div>
-                  </div>
+              {step === 2 && (
+                <RingPicker
+                  // If you also update Ring.tsx to accept typeId, pass it here too:
+                  // typeId={selectedTypeId}
+                  value={ring as any}
+                  onChange={(p: any) => {
+                    setRing(p);
+                    showToast("Ring locked. The build tightens.");
+                    setStep(3);
+                  }}
+                  onToast={showToast}
+                />
+              )}
 
-                  <div className="p-4">
-                    <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-white/10 bg-black/40">
-                      <AnimatePresence>
-                        {head?.photo && (
-                          <motion.img
-                            key={`head-${head.id}`}
-                            src={resolvePhoto(head.photo)}
-                            alt={head.name}
-                            className="absolute inset-0 w-full h-full object-cover"
-                            initial={{ opacity: 0, y: 18, scale: 1.02 }}
-                            animate={{ opacity: 0.95, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: -18 }}
-                            transition={{ duration: 0.35 }}
-                          />
-                        )}
-                      </AnimatePresence>
-
-                      <AnimatePresence>
-                        {ring?.photo && (
-                          <motion.img
-                            key={`ring-${ring.id}`}
-                            src={resolvePhoto(ring.photo)}
-                            alt={ring.name}
-                            className="absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-70"
-                            initial={{ opacity: 0, x: -18, scale: 1.03 }}
-                            animate={{ opacity: 0.7, x: 0, scale: 1 }}
-                            exit={{ opacity: 0, x: 18 }}
-                            transition={{ duration: 0.35 }}
-                          />
-                        )}
-                      </AnimatePresence>
-
-                      <AnimatePresence>
-                        {tail?.photo && (
-                          <motion.img
-                            key={`tail-${tail.id}`}
-                            src={resolvePhoto(tail.photo)}
-                            alt={tail.name}
-                            className="absolute inset-0 w-full h-full object-cover opacity-70"
-                            initial={{ opacity: 0, y: -18, scale: 1.03 }}
-                            animate={{ opacity: 0.7, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 18 }}
-                            transition={{ duration: 0.35 }}
-                          />
-                        )}
-                      </AnimatePresence>
-
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/10" />
-
-                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-xs text-stone-300">Build total</div>
-                          <div className="text-lg font-bold text-[#c9a36a]">
-                            {fmtMoney(total, "EUR")}
-                          </div>
-                        </div>
-                        <div className={`shrink-0 text-xs px-2 py-1 rounded-lg border ${accentChip}`}>
-                          {accent === "ember" ? "Ember" : accent === "ice" ? "Ice" : "Gold"}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-1 gap-3">
-                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                        <div className="text-xs text-stone-400 mb-1">Bowl</div>
-                        <div className="text-sm text-stone-200 line-clamp-1">{previewText.h}</div>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                        <div className="text-xs text-stone-400 mb-1">Ring</div>
-                        <div className="text-sm text-stone-200 line-clamp-1">{previewText.r}</div>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                        <div className="text-xs text-stone-400 mb-1">Stem</div>
-                        <div className="text-sm text-stone-200 line-clamp-1">{previewText.ta}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                  <div className="text-sm text-stone-300 mb-2">Name your pipe</div>
-                  <input
-                    value={pipeName}
-                    onChange={(e) => setPipeName(e.target.value)}
-                    placeholder="e.g. Golden Ember"
-                    className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 outline-none focus:border-[#c9a36a]/50"
-                  />
-
-                  <div className="mt-4 flex gap-3">
-                    <motion.button
-                      whileHover={canFinish ? { scale: 1.02 } : {}}
-                      whileTap={canFinish ? { scale: 0.98 } : {}}
-                      onClick={confirmAdd}
-                      disabled={!canFinish}
-                      className={`flex-1 px-5 py-3 rounded-xl font-bold shadow-lg ${
-                        canFinish
-                          ? "bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black"
-                          : "bg-stone-700/50 text-stone-400 cursor-not-allowed"
-                      }`}
-                    >
-                      Add to Cart
-                    </motion.button>
-
-                    <button
-                      onClick={reset}
-                      className="px-5 py-3 rounded-xl border border-white/10 bg-black/30 text-stone-200 hover:bg-black/40 transition inline-flex items-center gap-2"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                      Reset
-                    </button>
-                  </div>
-
-                  <div className="mt-4 text-xs text-stone-500 leading-relaxed">
-                    Tip: Choose the bowl first, then lock the ring, then finish with the stem — it’s
-                    designed as a 3-part build experience.
-                  </div>
-                </div>
-              </div>
-            </motion.aside>
-          </div>
+              {step === 3 && (
+                <TailPicker
+                  // If you also update Tail.tsx to accept typeId, pass it here too:
+                  // typeId={selectedTypeId}
+                  value={tail as any}
+                  onChange={(p: any) => {
+                    setTail(p);
+                    showToast("Stem attached. Continue to preview.");
+                  }}
+                  onToast={showToast}
+                />
+              )}
+            </div>
+          </motion.section>
         </div>
       </main>
     </>

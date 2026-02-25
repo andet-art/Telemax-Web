@@ -5,14 +5,10 @@ exports.getSubtypes = async (req, res) => {
   try {
     const { type_id } = req.query;
 
-    if (!type_id) {
-      return res.status(400).json({
-        success: false,
-        message: "type_id is required",
-      });
-    }
-
-    const subtypes = await catalogSubtypeModel.getByTypeId(type_id);
+    // ✅ If no type_id → return ALL active subtypes
+    const subtypes = type_id
+      ? await catalogSubtypeModel.getByTypeId(type_id)
+      : await catalogSubtypeModel.getAllActive();
 
     return res.json({
       success: true,
