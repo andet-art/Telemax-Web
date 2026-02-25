@@ -8,10 +8,13 @@ export type PipePart = {
   part_type: "head" | "ring" | "tail";
   code: string; // e.g. HEAD-AVERY-01__BLACK
   name: string;
+  photo: string; // e.g. parts/HEAD-AVERY-01.png or full URL
+  created_at?: string;
+
+  // optional (if you add them later in DB)
   material?: string | null;
   vibe?: string | null;
-  price: number;
-  photo: string; // e.g. parts/HEAD-AVERY-01.png or full URL
+  price?: number | null;
   accent?: "gold" | "ember" | "ice" | null;
 };
 
@@ -25,7 +28,6 @@ function resolvePhoto(photo: string) {
   if (!photo) return "";
   if (photo.startsWith("http://") || photo.startsWith("https://")) return photo;
   const base = (import.meta as any).env?.VITE_API_URL || "";
-  // if your API serves static images from same domain root:
   return `${base.replace(/\/$/, "")}/${photo.replace(/^\//, "")}`;
 }
 
@@ -41,26 +43,37 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
   const [heads, setHeads] = useState<PipePart[]>([]);
   const [modelKey, setModelKey] = useState<string | null>(null);
 
+  // FETCH heads from backend (parts table)
   useEffect(() => {
     let alive = true;
+
     (async () => {
       try {
         setLoading(true);
         const res = await api.get("/parts", { params: { part_type: "head" } });
-        const rows = (res.data?.data || res.data || []) as PipePart[];
-        if (alive) setHeads(rows);
-      } catch (e) {
+
+        const rows = (res.data?.data ?? res.data ?? []) as PipePart[];
+
+        // normalize photo -> full URL
+        const normalized = rows.map((r) => ({
+          ...r,
+          photo: r.photo, // keep raw in state; we resolve when rendering
+        }));
+
+        if (alive) setHeads(normalized);
+      } catch {
         if (alive) setHeads([]);
       } finally {
         if (alive) setLoading(false);
       }
     })();
+
     return () => {
       alive = false;
     };
   }, []);
 
-  // If a head is already selected, keep UI aligned to its model
+  // keep UI aligned to selected head model
   useEffect(() => {
     if (value?.code) setModelKey(getModelKey(value.code));
   }, [value?.code]);
@@ -71,29 +84,31 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
       const mk = getModelKey(h.code);
       if (!map.has(mk)) map.set(mk, h); // first variant as cover
     }
+
     return Array.from(map.entries()).map(([mk, sample]) => ({
       modelKey: mk,
       sample,
-      displayName:
-        sample.name || mk.replace(/^HEAD-/, "").replaceAll("-", " "),
+      displayName: sample.name || mk.replace(/^HEAD-/, "").replace(/-/g, " "),
       cover: resolvePhoto(sample.photo),
     }));
   }, [heads]);
 
   const colorsForModel = useMemo(() => {
     if (!modelKey) return [];
+
     const variants = heads.filter((h) => getModelKey(h.code) === modelKey);
-    // unique colors by colorKey
+
     const map = new Map<string, PipePart>();
     for (const v of variants) {
       const ck = getColorKey(v.code) || v.code;
       if (!map.has(ck)) map.set(ck, v);
     }
+
     return Array.from(map.entries()).map(([ck, v]) => ({
       colorKey: ck,
       variant: v,
       photo: resolvePhoto(v.photo),
-      label: ck.replaceAll("_", " "),
+      label: ck.replace(/_/g, " "),
     }));
   }, [heads, modelKey]);
 
@@ -110,7 +125,10 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
 
         {selectedModelKey && (
           <div className="text-xs px-3 py-2 rounded-xl border border-white/10 bg-black/25 text-stone-200">
-            Model: <span className="text-[#c9a36a] font-semibold">{selectedModelKey}</span>
+            Model:{" "}
+            <span className="text-[#c9a36a] font-semibold">
+              {selectedModelKey}
+            </span>
           </div>
         )}
       </div>
@@ -125,6 +143,7 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {models.map(({ modelKey: mk, cover, displayName }, idx) => {
             const active = mk === selectedModelKey;
+
             return (
               <motion.button
                 key={mk}
@@ -152,6 +171,7 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
                     loading="lazy"
                   />
                 </div>
+
                 <div className="p-4">
                   <div className="text-lg font-bold line-clamp-1">
                     {displayName}
@@ -201,15 +221,13 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
                 {colorsForModel.map(({ colorKey, variant, photo, label }) => {
                   const active = colorKey === selectedColorKey;
+
                   return (
                     <button
                       key={colorKey}
                       type="button"
                       onClick={() => {
-                        onChange({
-                          ...variant,
-                          photo: variant.photo,
-                        });
+                        onChange(variant);
                         onToast?.("Head color selected.");
                       }}
                       className={`rounded-xl border overflow-hidden text-left transition ${
