@@ -15,6 +15,7 @@ type DbProduct = {
   id: number | string;
   sku: string | number;
   name: string;
+  variant_label?: string | null; // ✅ NEW (Model 1, Model 2, ...)
   description: string | null;
   price: number | string | null;
   currency: string | null;
@@ -35,8 +36,9 @@ type ProductsApiResponse = {
 
 type ApiProduct = {
   id: string | number;
-  sku?: string;
+  sku?: string; // still string on FE
   name: string;
+  variant_label?: string | null; // ✅ NEW
   description?: string;
   price: number;
   currency?: string;
@@ -329,6 +331,7 @@ export default function OrdersPage() {
               id: p.id,
               sku: String(p.sku ?? ""),
               name: p.name,
+              variant_label: p.variant_label ?? null, // ✅ NEW
               description: p.description ?? "",
               price: Number.isFinite(price) ? price : 0,
               currency,
@@ -364,7 +367,7 @@ export default function OrdersPage() {
     return ["All", ...names];
   }, [types]);
 
-  /** ---------- FILTER + SORT (search includes name, sku, description) ---------- */
+  /** ---------- FILTER + SORT (search includes name, sku, model, description) ---------- */
   const filteredAndSorted = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     const normalizedType = categoriesList.includes(selectedType)
@@ -386,8 +389,14 @@ export default function OrdersPage() {
       filtered = filtered.filter((p) => {
         const name = (p.name || "").toLowerCase();
         const sku = (p.sku || "").toLowerCase();
+        const model = (p.variant_label || "").toLowerCase();
         const desc = (p.description || "").toLowerCase();
-        return name.includes(term) || sku.includes(term) || desc.includes(term);
+        return (
+          name.includes(term) ||
+          sku.includes(term) ||
+          model.includes(term) ||
+          desc.includes(term)
+        );
       });
     }
 
@@ -415,6 +424,8 @@ export default function OrdersPage() {
         image: pipe.image,
         sku: pipe.sku,
         quantity: 1,
+        // optional: keep this in cart item if your Cart supports it
+        variant_label: pipe.variant_label ?? null,
       } as any);
 
       showToast(t("orders.toasts.added"));
@@ -521,7 +532,7 @@ export default function OrdersPage() {
               {t("orders.subtitle")}
             </p>
 
-            {/* ✅ Controls: Search + Types (from DB) + Sort (2 only) + Build button */}
+            {/* ✅ Controls: Search + Types (from DB) + Sort (2 only) */}
             <div className="mt-6 max-w-6xl mx-auto flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-center px-2">
               <input
                 value={searchTerm}
@@ -556,7 +567,10 @@ export default function OrdersPage() {
                   {t("orders.sort.priceLow")}
                 </option>
               </select>
+            </div>
 
+            {/* ✅ Build your own pipe: NEW LINE (below 3 filters, above "showing") */}
+            <div className="mt-4 max-w-6xl mx-auto px-2 flex justify-center">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -618,7 +632,7 @@ export default function OrdersPage() {
                     <div className="absolute inset-0 bg-gradient-to-r from-[#c9a36a]/0 via-[#c9a36a]/5 to-[#c9a36a]/0 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
 
                     <div className="relative z-10">
-                      {/* ✅ single photo only in image area (no sku, no like, no rating, no stock, no eye, no hover quick view) */}
+                      {/* ✅ single photo only in image area */}
                       <div className="relative overflow-hidden rounded-xl mb-4 aspect-[4/3] bg-black/30">
                         <img
                           src={pipe.image}
@@ -626,13 +640,29 @@ export default function OrdersPage() {
                           className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           loading="lazy"
                         />
+
+                        {/* ✅ subtle SKU (not too visible) */}
+                        {!!pipe.sku && (
+                          <div className="absolute bottom-2 right-2 rounded-full border border-white/10 bg-black/55 backdrop-blur px-2.5 py-1 text-[10px] tracking-wide text-white/70">
+                            SKU {pipe.sku}
+                          </div>
+                        )}
                       </div>
 
                       {/* Minimal info only */}
                       <div className="space-y-3">
-                        <h3 className="text-lg sm:text-xl font-bold line-clamp-1 group-hover:text-[#c9a36a] transition-colors">
-                          {pipe.name}
-                        </h3>
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="text-lg sm:text-xl font-bold line-clamp-1 group-hover:text-[#c9a36a] transition-colors">
+                            {pipe.name}
+                          </h3>
+
+                          {/* ✅ Model label (Model 1, Model 2...) */}
+                          {!!pipe.variant_label && (
+                            <div className="shrink-0 rounded-full border border-[#c9a36a]/25 bg-[#c9a36a]/10 px-2.5 py-1 text-[11px] font-semibold text-[#e8cf9c]">
+                              {pipe.variant_label}
+                            </div>
+                          )}
+                        </div>
 
                         <div className="flex items-center justify-between">
                           <span className="text-xl sm:text-2xl font-bold text-[#c9a36a]">
@@ -654,7 +684,9 @@ export default function OrdersPage() {
                         className="flex-1 px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg bg-gradient-to-r from-[#c9a36a] to-[#d4b173] hover:from-[#d4b173] hover:to-[#e5c584] text-black shadow-[#c9a36a]/25"
                       >
                         <ShoppingCart className="w-4 h-4" />
-                        <span className="text-sm">{t("orders.actions.addToCart")}</span>
+                        <span className="text-sm">
+                          {t("orders.actions.addToCart")}
+                        </span>
                       </motion.button>
                     </div>
                   </motion.div>

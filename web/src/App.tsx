@@ -1,29 +1,41 @@
+// src/App.tsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
 import MainLayout from "./layouts/MainLayout";
+
 import Home from "./pages/Home";
 import Orders from "./pages/Orders";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import FAQ from "./components/FAQ";
+
 import SignIn from "./pages/signin";
 import SignUp from "./pages/signup";
 import Checkout from "./pages/Checkout";
 import Profile from "./pages/Profile";
-import Payment from "./pages/Payment";  // only one import now
+import Payment from "./pages/Payment";
+
 import CustomImageCustomizer from "./pages/CustomImageCustomizer";
 import CustomizePage from "./pages/CustomizePage";
+
 import AdminDashboard from "./pages/AdminDashboard";
 import OrderHistory from "./pages/OrderHistory";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
+
 import Cart from "./pages/Cart";
+
 import Overview from "./pages/profile/OverviewDetails";
 import Addresses from "./pages/profile/Addresses";
 import Settings from "./pages/profile/Settings";
+
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+
+// ✅ Custom builder page
+import Custom from "./pages/Custom";
+
 function App() {
   return (
     <Router>
       <MainLayout>
-        {/* ✅ Moved LanguageSwitcher OUTSIDE of <Routes> */}
         <LanguageSwitcher />
 
         <Routes>
@@ -45,6 +57,9 @@ function App() {
           <Route path="/profile/overview" element={<Overview />} />
           <Route path="/profile/addresses" element={<Addresses />} />
           <Route path="/profile/settings" element={<Settings />} />
+
+          {/* ✅ NEW route */}
+          <Route path="/custom" element={<Custom />} />
         </Routes>
       </MainLayout>
     </Router>

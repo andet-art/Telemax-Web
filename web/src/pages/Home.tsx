@@ -1,11 +1,26 @@
-// src/pages/Orders.tsx
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+// src/pages/Home.tsx
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ShoppingCart, X, CheckCircle } from "lucide-react";
 
-import { useCart } from "../context/CartContext";
+import { sanity } from "@/lib/sanity";
+import { homeCMSQuery } from "@/lib/queries";
+
+import Lazy from "@/components/Lazy";
+import { motion, AnimatePresence } from "framer-motion";
+import Lenis from "@studio-freight/lenis";
+
+import Slider from "react-slick";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
+
+import { FaStar, FaQuoteLeft, FaArrowRight, FaCheckCircle } from "react-icons/fa";
+
+import heroVideo from "../assets/hero-home.mp4";
+import woodBg from "../assets/wood-bg.jpg";
+import artisanImg from "../assets/artisan.jpg";
+import artisan2 from "../assets/artisan2.jpg";
+
 import { api } from "@/lib/api";
 
 /** ---------------------------
@@ -33,7 +48,7 @@ type ProductsApiResponse = {
   message?: string;
 };
 
-type ApiProduct = {
+type HomeProduct = {
   id: string | number;
   sku?: string;
   name: string;
@@ -41,29 +56,17 @@ type ApiProduct = {
   price: number;
   currency?: string;
   image?: string;
+  rating?: number;
+  category?: string;
+  isNew?: boolean;
 };
 
-/** Simple throttle */
-const throttle = (fn: (...args: any[]) => void, wait = 100) => {
-  let last = 0;
-  return (...args: any[]) => {
-    const now = Date.now();
-    if (now - last >= wait) {
-      last = now;
-      fn(...args);
-    }
-  };
-};
-
-// ✅ Build absolute image URL from DB values like "photos/3273001.png"
+/** ✅ Build absolute image URL from DB values like "photos/3273001.png" */
 function getApiOrigin(): string {
-  const base = (
-    api?.defaults?.baseURL ||
-    (import.meta as any)?.env?.VITE_API_URL ||
-    ""
-  )
-    .toString()
-    .trim();
+  const base =
+    (api?.defaults?.baseURL || (import.meta as any)?.env?.VITE_API_URL || "")
+      .toString()
+      .trim();
 
   if (!base) return window.location.origin;
 
@@ -74,7 +77,8 @@ function getApiOrigin(): string {
 
 function resolveImageUrl(primary_photo?: string | null): string {
   const fallback =
-    "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&h=600&fit=crop";
+    "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=1200&h=900&fit=crop";
+
   if (!primary_photo) return fallback;
 
   const raw = String(primary_photo).trim();
@@ -87,7 +91,6 @@ function resolveImageUrl(primary_photo?: string | null): string {
   return `${origin}${path}`;
 }
 
-// ✅ currency-aware display
 function fmtMoney(amount: number, currency?: string) {
   const c = (currency || "EUR").toUpperCase();
   try {
@@ -100,99 +103,118 @@ function fmtMoney(amount: number, currency?: string) {
   }
 }
 
-// Toast
-const Toast = ({
-  message,
-  type = "success",
-  onClose,
-}: {
-  message: string;
-  type?: "success" | "error";
-  onClose: () => void;
-}) => (
-  <motion.div
-    className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-[70] flex items-center gap-3 ${
-      type === "success"
-        ? "bg-gradient-to-r from-green-800 to-green-700 text-green-100"
-        : "bg-gradient-to-r from-red-800 to-red-700 text-red-100"
-    }`}
-    initial={{ opacity: 0, y: -20, x: 20 }}
-    animate={{ opacity: 1, y: 0, x: 0 }}
-    exit={{ opacity: 0, y: -20, x: 20 }}
-    transition={{ type: "spring", damping: 20, stiffness: 300 }}
-  >
-    <CheckCircle className="w-5 h-5" />
-    <span className="font-medium">{message}</span>
-    <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100">
-      <X className="w-4 h-4" />
-    </button>
-  </motion.div>
-);
+/** ✅ Fisher–Yates shuffle */
+function shuffle<T>(arr: T[]): T[] {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
-export default function OrdersPage() {
+const Home = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { addToCart, cartTotal, cartItemCount } = useCart();
 
-  // Backend products
-  const [products, setProducts] = useState<ApiProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedImg, setSelectedImg] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
 
-  // UI state
-  const [activeSection, setActiveSection] = useState<"commercial" | "custom">(
-    "commercial"
-  );
-
-  // ✅ ONLY SORT: price-high / price-low
-  const [sortBy, setSortBy] = useState<"price-high" | "price-low">("price-high");
-
-  // Navbar hide behavior
-  const [navbarHidden, setNavbarHidden] = useState(false);
-  const lastScrollYRef = useRef(0);
-
-  // Product modal (click card)
-  const [selectedPipe, setSelectedPipe] = useState<ApiProduct | null>(null);
-
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
+  const [cmsData, setCmsData] = useState<{
+    cmsTitle: string;
+    cmsDescription: string;
+    cmsButton: string;
   } | null>(null);
 
-  // Custom pipe builder (kept minimal)
-  const [selectedHead, setSelectedHead] = useState<any>(null);
-  const [selectedRing, setSelectedRing] = useState<any>(null);
-  const [selectedTail, setSelectedTail] = useState<any>(null);
-  const [customPipeName, setCustomPipeName] = useState("");
-  const [buildStep, setBuildStep] = useState(1);
+  // ✅ Products from DB
+  const [products, setProducts] = useState<HomeProduct[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
 
-  /** ---------- EFFECTS ---------- */
+  // Scroll top
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // ✅ Lenis smooth scroll
   useEffect(() => {
-    const onScroll = throttle(() => {
-      const current = window.scrollY;
-      const showNavbarNow = current < lastScrollYRef.current || current < 10;
-      setNavbarHidden(!showNavbarNow);
-      lastScrollYRef.current = current;
-    }, 120);
+    const lenis = new Lenis();
+    let rafId = 0;
 
+    function raf(time: number) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+
+    rafId = requestAnimationFrame(raf);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      // @ts-ignore
+      lenis?.destroy?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // ✅ Scroll-to-top visibility
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 800);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // ✅ Fetch products (backend response: { success, count, data })
+  // ✅ Fetch CMS content (kept)
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchContent = async () => {
+      try {
+        const result = await sanity.fetch(homeCMSQuery);
+        if (!cancelled) setCmsData(result);
+      } catch {
+        if (!cancelled) {
+          setCmsData({
+            cmsTitle: "Live Content Editing",
+            cmsDescription: "Easily manage your content using Sanity CMS.",
+            cmsButton: "Connect Sanity CMS",
+          });
+        }
+      }
+    };
+
+    fetchContent();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ✅ Fetch products like Orders.tsx + RANDOMIZE ON EVERY REFRESH
   useEffect(() => {
     let mounted = true;
 
+    const typeIdToCategory: Record<number, string> = {
+      1: "Wood",
+      2: "Metal",
+      3: "Hybrid",
+      4: "Luxury",
+    };
+
     const fetchProducts = async () => {
       try {
-        setLoading(true);
-        setLoadError(null);
+        setLoadingProducts(true);
+        setProductsError(null);
 
         const base = String(api?.defaults?.baseURL || "").replace(/\/+$/, "");
         const usesApiPrefix = /\/api$/i.test(base);
         const endpoint = usesApiPrefix ? "/products" : "/api/products";
 
         const res = await api.get<ProductsApiResponse>(endpoint);
+
         if (!mounted) return;
 
         if (!res.data?.success) {
@@ -203,7 +225,7 @@ export default function OrdersPage() {
           ? res.data.data
           : [];
 
-        const mapped: ApiProduct[] = (rawList ?? [])
+        const mapped: HomeProduct[] = (rawList ?? [])
           .filter((p) => {
             const active = p?.is_active;
             return active === null || active === undefined
@@ -214,6 +236,13 @@ export default function OrdersPage() {
             const currency = (p.currency || "EUR").toString().toUpperCase();
             const price = Number(p.price ?? 0);
 
+            const createdMs = p.created_at
+              ? new Date(p.created_at).getTime()
+              : 0;
+            const isNew =
+              createdMs > 0 &&
+              Date.now() - createdMs < 14 * 24 * 60 * 60 * 1000;
+
             return {
               id: p.id,
               sku: String(p.sku ?? ""),
@@ -222,14 +251,22 @@ export default function OrdersPage() {
               price: Number.isFinite(price) ? price : 0,
               currency,
               image: resolveImageUrl(p.primary_photo),
+              rating: 4.6,
+              category: typeIdToCategory[Number(p.type_id)] || "Wood",
+              isNew,
             };
           });
 
-        setProducts(mapped);
+        // ✅ TRUE RANDOM every refresh:
+        // - shuffle everything
+        // - take 8
+        const randomEight = shuffle(mapped).slice(0, 8);
+
+        setProducts(randomEight);
       } catch (e: any) {
-        setLoadError(e?.message || t("orders.errors.loadFailed"));
+        setProductsError(e?.message || "Failed to load products");
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) setLoadingProducts(false);
       }
     };
 
@@ -237,486 +274,350 @@ export default function OrdersPage() {
     return () => {
       mounted = false;
     };
-  }, [t]);
+  }, []);
 
-  // Toast
-  const showToast = useCallback(
-    (message: string, type: "success" | "error" = "success") => {
-      setToast({ message, type });
-      const id = setTimeout(() => setToast(null), 2500);
-      return () => clearTimeout(id);
-    },
-    []
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const openImageModal = useCallback((img: string) => {
+    setSelectedImg(img);
+    document.body.style.overflow = "hidden";
+  }, []);
+
+  const closeImageModal = useCallback(() => {
+    setSelectedImg(null);
+    document.body.style.overflow = "auto";
+  }, []);
+
+  const carouselSettings = useMemo(
+    () => ({
+      centerMode: !isMobile,
+      centerPadding: isMobile ? "18px" : "0px",
+      slidesToShow: isMobile ? 1 : 3,
+      infinite: true,
+      autoplay: !isMobile,
+      autoplaySpeed: 3800,
+      speed: 450,
+      arrows: false,
+      dots: isMobile,
+      pauseOnHover: true,
+      swipeToSlide: true,
+      responsive: [
+        { breakpoint: 1024, settings: { slidesToShow: 2, dots: true } },
+        {
+          breakpoint: 768,
+          settings: { slidesToShow: 1, dots: true, autoplay: false },
+        },
+      ],
+    }),
+    [isMobile]
   );
-
-  /** ---------- SORT ONLY ---------- */
-  const sortedPipes = useMemo(() => {
-    const arr = products.slice();
-    if (sortBy === "price-high") {
-      arr.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-    } else {
-      arr.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-    }
-    return arr;
-  }, [products, sortBy]);
-
-  /** ---------- MODAL ---------- */
-  const openProduct = useCallback((pipe: ApiProduct) => setSelectedPipe(pipe), []);
-  const closeProduct = useCallback(() => setSelectedPipe(null), []);
-
-  /** ---------- CART ---------- */
-  const addCommercialToCart = useCallback(
-    (pipe: ApiProduct) => {
-      addToCart({
-        id: pipe.id,
-        type: "commercial",
-        name: pipe.name,
-        price: Number(pipe.price ?? 0),
-        currency: pipe.currency ?? "EUR",
-        image: pipe.image,
-        sku: pipe.sku,
-        quantity: 1,
-      } as any);
-
-      showToast(t("orders.toasts.added"));
-    },
-    [addToCart, showToast, t]
-  );
-
-  /** ---------- CUSTOM PIPE ---------- */
-  const getCustomPipeTotal = useCallback(() => {
-    return (
-      (selectedHead?.price || 0) +
-      (selectedRing?.price || 0) +
-      (selectedTail?.price || 0)
-    );
-  }, [selectedHead, selectedRing, selectedTail]);
-
-  const resetCustomPipe = useCallback(() => {
-    setSelectedHead(null);
-    setSelectedRing(null);
-    setSelectedTail(null);
-    setCustomPipeName("");
-    setBuildStep(1);
-    showToast(t("orders.toasts.reset"));
-  }, [showToast, t]);
-
-  const addCustomPipeToCart = useCallback(() => {
-    if (!selectedHead || !selectedRing || !selectedTail || !customPipeName.trim()) {
-      showToast(t("orders.toasts.completeDesign"), "error");
-      return;
-    }
-
-    addToCart({
-      id: `custom-${Date.now()}`,
-      type: "custom",
-      name: customPipeName || t("orders.custom.defaultName"),
-      price: getCustomPipeTotal(),
-      quantity: 1,
-      image: selectedHead.image,
-      currency: "EUR",
-      head: selectedHead,
-      ring: selectedRing,
-      tail: selectedTail,
-    } as any);
-
-    showToast(t("orders.toasts.customAdded"));
-  }, [
-    selectedHead,
-    selectedRing,
-    selectedTail,
-    customPipeName,
-    getCustomPipeTotal,
-    addToCart,
-    showToast,
-    t,
-  ]);
 
   return (
-    <>
-      <AnimatePresence>
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(null)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Cart button */}
-      <button
-        onClick={() => navigate("/cart")}
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-xl bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black font-semibold hover:opacity-90 transition"
-        aria-label="View Cart"
-      >
-        <ShoppingCart className="w-4 h-4" />
-        <span>
-          {cartItemCount} – {fmtMoney(cartTotal, "EUR")}
-        </span>
-      </button>
-
-      {/* Product Photo Modal */}
-      <AnimatePresence>
-        {selectedPipe && (
-          <motion.div
-            className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeProduct}
-          >
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-
-            <motion.div
-              className="relative z-10 w-full max-w-4xl rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-br from-[#0f0b07] to-[#1a120b] shadow-2xl"
-              initial={{ opacity: 0, y: 20, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.98 }}
-              transition={{ type: "spring", damping: 22, stiffness: 260 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={closeProduct}
-                className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/60 hover:bg-black/75 border border-white/10"
-                aria-label="Close"
-              >
-                <X className="w-5 h-5 text-white" />
-              </button>
-
-              <div className="w-full aspect-[4/3] bg-black">
-                <img
-                  src={selectedPipe.image}
-                  alt={selectedPipe.name}
-                  className="w-full h-full object-contain"
-                  loading="eager"
-                />
-              </div>
-
-              <div className="p-4 sm:p-6 border-t border-white/10 flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="text-lg sm:text-xl font-bold text-white line-clamp-1">
-                    {selectedPipe.name}
-                  </div>
-                  <div className="text-sm text-stone-400 line-clamp-2">
-                    {selectedPipe.description || ""}
-                  </div>
-                </div>
-
-                <div className="shrink-0 flex items-center gap-3">
-                  <div className="text-lg sm:text-2xl font-bold text-[#c9a36a]">
-                    {fmtMoney(Number(selectedPipe.price ?? 0), selectedPipe.currency)}
-                  </div>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => addCommercialToCart(selectedPipe)}
-                    className="px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg bg-gradient-to-r from-[#c9a36a] to-[#d4b173] hover:from-[#d4b173] hover:to-[#e5c584] text-black shadow-[#c9a36a]/25"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span className="text-sm">{t("orders.actions.addToCart")}</span>
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <main className="relative min-h-screen pt-20 sm:pt-28 pb-24 flex overflow-auto bg-[url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop')] bg-cover bg-center text-white font-serif">
-        <div className="absolute inset-0 bg-black/70 z-0" />
+    <div className="bg-[#1a120b] text-white overflow-hidden font-serif">
+      {/* HERO (ONLY title + one button like screenshot) */}
+      <section className="relative min-h-screen flex items-center justify-center text-center px-4 sm:px-6">
+        <video
+          src={heroVideo}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          poster={woodBg}
+          onLoadedData={() => setVideoLoaded(true)}
+        />
+        <div className="absolute inset-0 bg-black/65" />
 
         <motion.div
-          className="relative z-20 flex-1 px-3 sm:px-6 transition-all duration-300"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
+          className="relative z-10 max-w-5xl mx-auto"
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: videoLoaded ? 1 : 0, y: 0 }}
+          transition={{ duration: 0.9 }}
         >
-          {/* Header */}
-          <motion.div
-            className="text-center mb-8 sm:mb-12"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <motion.h1
-              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 drop-shadow-xl bg-gradient-to-r from-white via-[#c9a36a] to-white bg-clip-text text-transparent"
-              animate={{
-                textShadow: [
-                  "0 0 20px rgba(201,163,106,.3)",
-                  "0 0 30px rgba(201,163,106,.5)",
-                  "0 0 20px rgba(201,163,106,.3)",
-                ],
-              }}
-              transition={{ duration: 3, repeat: Infinity }}
-            >
-              {t("orders.title")}
-            </motion.h1>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] drop-shadow-[0_2px_18px_rgba(0,0,0,0.65)]">
+            {t("home.hero_title") || "German Craftsmanship for Connoisseurs"}
+          </h1>
 
-            <p className="text-base sm:text-lg md:text-xl text-stone-300 max-w-2xl mx-auto px-4">
-              {t("orders.subtitle")}
+          <div className="mt-7 flex justify-center">
+            <Link
+              to="/orders"
+              className="inline-flex items-center justify-center px-7 py-3.5 rounded-full font-semibold
+                         bg-white/15 hover:bg-white/20 border border-white/15 backdrop-blur-sm
+                         text-white shadow-lg transition"
+            >
+              {t("home.view_collection") || "View Collection"}
+            </Link>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* FEATURE IMAGE (on theme) */}
+      <section className="py-16 sm:py-20 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+          >
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              {t("home.section1_title") || "A Workshop Where Every Detail Matters"}
+            </h2>
+            <p className="text-stone-300 leading-relaxed">
+              {t("home.section1_desc") ||
+                "From shaping to finishing, our pipes carry a signature of precision—an unmistakable blend of tradition and refinement."}
             </p>
 
-            {/* ✅ ONLY sort + build button */}
-            <div className="mt-6 max-w-5xl mx-auto flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-center px-2">
-              <select
-                value={sortBy}
-                onChange={(e) =>
-                  setSortBy(e.target.value as "price-high" | "price-low")
-                }
-                className="w-full md:w-[320px] px-4 py-3 rounded-xl bg-black/50 border border-white/10 outline-none focus:border-[#c9a36a]/50"
-              >
-                <option value="price-high" className="bg-black">
-                  {t("orders.sort.priceHigh")}
-                </option>
-                <option value="price-low" className="bg-black">
-                  {t("orders.sort.priceLow")}
-                </option>
-              </select>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveSection("custom")}
-                className="w-full md:w-[320px] px-5 py-3 rounded-xl font-bold shadow-lg bg-gradient-to-r from-[#c9a36a] to-[#d4b173] hover:from-[#d4b173] hover:to-[#e5c584] text-black"
-              >
-                {t("orders.actions.buildYourOwn")}
-              </motion.button>
+            <div className="mt-6 space-y-3 text-sm text-stone-300">
+              {[
+                t("home.section1_point1") || "Handcrafted finishing and quality control",
+                t("home.section1_point2") || "Private label production for renowned brands",
+                t("home.section1_point3") || "Designed for collectors and daily connoisseurs",
+              ].map((x, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <FaCheckCircle className="text-[#c9a36a]" />
+                  <span>{x}</span>
+                </div>
+              ))}
             </div>
 
-            <div className="mt-3 text-sm text-stone-400">
-              {t("orders.showing")}{" "}
-              <span className="text-[#c9a36a] font-semibold">{sortedPipes.length}</span>{" "}
-              {t("orders.products")}
+            <div className="mt-8">
+              <Link
+                to="/orders"
+                className="inline-flex items-center gap-2 text-[#c9a36a] hover:text-[#e5c584] transition font-semibold"
+              >
+                {t("home.section1_cta") || "Explore the catalogue"} <FaArrowRight />
+              </Link>
             </div>
           </motion.div>
 
-          <AnimatePresence mode="wait">
-            {activeSection === "commercial" && (
-              <motion.div
-                key="commercial"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 max-w-7xl mx-auto">
-                  {!loading &&
-                    !loadError &&
-                    sortedPipes.map((pipe, idx) => (
-                      <motion.div
-                        key={pipe.id}
-                        className="group bg-gradient-to-br from-[#1a120b]/95 via-[#1a120b]/90 to-[#2a1d13]/95 backdrop-blur-lg border border-[#2a1d13]/50 rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-xl hover:shadow-2xl hover:shadow-[#c9a36a]/10 transition-all overflow-hidden relative cursor-pointer"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.03, duration: 0.45 }}
-                        viewport={{ once: true }}
-                        whileHover={{ y: -5, borderColor: "rgba(201,163,106,.4)" }}
-                        onClick={() => openProduct(pipe)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") openProduct(pipe);
-                        }}
-                        aria-label={`Open ${pipe.name}`}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#c9a36a]/0 via-[#c9a36a]/5 to-[#c9a36a]/0 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.75 }}
+            className="relative"
+          >
+            <div className="absolute -inset-3 rounded-3xl bg-gradient-to-r from-[#c9a36a]/15 to-transparent blur-2xl" />
+            <Lazy placeholder={<div className="h-[340px] rounded-2xl bg-black/30" />}>
+              <img
+                src={artisanImg}
+                alt="Artisan"
+                className="relative w-full rounded-2xl shadow-2xl border border-white/10 object-cover"
+                loading="lazy"
+              />
+            </Lazy>
+          </motion.div>
+        </div>
+      </section>
 
-                        <div className="relative z-10">
-                          {/* single photo only */}
-                          <div className="relative overflow-hidden rounded-xl mb-4 aspect-[4/3] bg-black/30">
-                            <img
-                              src={pipe.image}
-                              alt={pipe.name}
-                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                              loading="lazy"
-                            />
+      {/* PRODUCTS PREVIEW (fetch from DB) */}
+      <section className="py-16 sm:py-20 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-end justify-between gap-4 mb-8">
+            <div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white">
+                {t("home.featured_title") || "Featured Selection"}
+              </h2>
+              <p className="text-stone-300 mt-2 max-w-2xl">
+                {t("home.featured_subtitle") ||
+                  "A curated preview from our live catalogue—fresh from the workshop."}
+              </p>
+            </div>
+
+            <Link
+              to="/orders"
+              className="hidden sm:inline-flex items-center gap-2 px-5 py-3 rounded-full border border-white/12 bg-black/25 hover:bg-black/35 transition font-semibold"
+            >
+              {t("home.featured_viewall") || "View All"} <FaArrowRight />
+            </Link>
+          </div>
+
+          {loadingProducts && (
+            <div className="text-center text-stone-300 py-10">
+              {t("home.loading_products") || "Loading products…"}
+            </div>
+          )}
+
+          {!loadingProducts && productsError && (
+            <div className="text-center text-red-300 py-10">
+              {t("home.products_error") || "Failed to load products"}: {productsError}
+            </div>
+          )}
+
+          {!loadingProducts && !productsError && products.length > 0 && (
+            <>
+              <div className="rounded-3xl border border-white/10 bg-black/20 backdrop-blur-sm p-4 sm:p-6">
+                <Slider {...carouselSettings}>
+                  {products.map((p) => (
+                    <div key={p.id} className="px-2">
+                      <motion.button
+                        type="button"
+                        onClick={() => p.image && openImageModal(p.image)}
+                        className="w-full text-left group rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a120b]/95 to-[#2a1d13]/95 overflow-hidden shadow-xl hover:shadow-2xl hover:shadow-[#c9a36a]/10 transition"
+                        whileHover={{ y: -4 }}
+                      >
+                        <div className="relative aspect-[4/3] bg-black/30">
+                          <img
+                            src={p.image}
+                            alt={p.name}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            loading="lazy"
+                          />
+
+                          <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs border border-white/10">
+                            <span className="text-stone-200">SKU:</span>{" "}
+                            <span className="text-[#c9a36a] font-semibold">
+                              {p.sku || "—"}
+                            </span>
                           </div>
 
-                          <div className="space-y-4">
-                            <div>
-                              <h3 className="text-lg sm:text-xl font-bold mb-2 line-clamp-1 group-hover:text-[#c9a36a] transition-colors">
-                                {pipe.name}
-                              </h3>
-                              <p className="text-xs sm:text-sm text-stone-400 mb-3 line-clamp-2 leading-relaxed">
-                                {pipe.description}
-                              </p>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <span className="text-xl sm:text-2xl font-bold text-[#c9a36a]">
-                                {fmtMoney(Number(pipe.price ?? 0), pipe.currency)}
+                          <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+                            {p.isNew && (
+                              <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-[#c9a36a] text-black shadow-lg">
+                                {t("home.badge_new") || "NEW"}
+                              </span>
+                            )}
+                            <div className="bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-1.5 border border-white/10">
+                              <FaStar className="text-yellow-400" />
+                              <span className="text-xs font-medium text-stone-100">
+                                {p.rating ?? 4.6}
                               </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Only this button should NOT open modal */}
-                        <div className="relative z-10 flex gap-3 mt-5">
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              addCommercialToCart(pipe);
-                            }}
-                            className="flex-1 px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg bg-gradient-to-r from-[#c9a36a] to-[#d4b173] hover:from-[#d4b173] hover:to-[#e5c584] text-black shadow-[#c9a36a]/25"
-                          >
-                            <ShoppingCart className="w-4 h-4" />
-                            <span className="text-sm">{t("orders.actions.addToCart")}</span>
-                          </motion.button>
+                        <div className="p-4 sm:p-5">
+                          <div className="text-sm text-stone-400 mb-1">
+                            {p.category || "Wood"}
+                          </div>
+                          <div className="text-lg font-bold text-white group-hover:text-[#c9a36a] transition line-clamp-1">
+                            {p.name}
+                          </div>
+                          <div className="text-sm text-stone-400 mt-2 line-clamp-2 min-h-[40px]">
+                            {p.description ||
+                              t("home.no_desc") ||
+                              "Handcrafted pipe with premium finishing."}
+                          </div>
+
+                          <div className="mt-4 flex items-center justify-between">
+                            <div className="text-lg font-bold text-[#c9a36a]">
+                              {fmtMoney(Number(p.price ?? 0), p.currency)}
+                            </div>
+                            <span className="text-xs px-3 py-1.5 rounded-full border border-[#c9a36a]/25 text-stone-200 bg-black/20">
+                              {t("home.tap_preview") || "Tap to preview"}
+                            </span>
+                          </div>
                         </div>
-                      </motion.div>
-                    ))}
-                </div>
-
-                {loading && (
-                  <div className="text-center text-stone-300 py-10">
-                    {t("orders.loading")}
-                  </div>
-                )}
-
-                {loadError && (
-                  <div className="text-center text-red-300 py-10">
-                    {t("orders.errors.failedPrefix")} {loadError}
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {activeSection === "custom" && (
-              <motion.div
-                key="custom"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="max-w-5xl mx-auto bg-gradient-to-br from-[#1a120b]/95 to-[#2a1d13]/95 backdrop-blur-lg border border-[#c9a36a]/30 rounded-2xl p-6 sm:p-8 shadow-2xl">
-                  <div className="flex items-center justify-between gap-3 mb-6">
-                    <div className="text-left">
-                      <div className="text-2xl font-bold">{t("orders.custom.title")}</div>
-                      <div className="text-stone-400 text-sm">
-                        {t("orders.custom.subtitle")}
-                      </div>
+                      </motion.button>
                     </div>
+                  ))}
+                </Slider>
+              </div>
 
-                    <button
-                      onClick={() => setActiveSection("commercial")}
-                      className="text-sm text-[#c9a36a] hover:text-[#e5c584] transition"
-                    >
-                      {t("orders.actions.backToShop")}
-                    </button>
-                  </div>
+              <div className="mt-6 sm:hidden">
+                <Link
+                  to="/orders"
+                  className="inline-flex items-center justify-center gap-2 w-full bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black px-6 py-3 rounded-full font-semibold shadow-lg shadow-[#c9a36a]/20"
+                >
+                  {t("home.featured_viewall") || "View All"}{" "}
+                  <FaArrowRight className="text-sm" />
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                      <div className="text-sm text-stone-300 mb-2">
-                        {t("orders.custom.nameLabel")}
-                      </div>
-                      <input
-                        value={customPipeName}
-                        onChange={(e) => setCustomPipeName(e.target.value)}
-                        placeholder={t("orders.custom.namePlaceholder")}
-                        className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 outline-none focus:border-[#c9a36a]/50"
-                      />
-
-                      <div className="mt-4 text-sm text-stone-400">
-                        {t("orders.custom.total")}{" "}
-                        <span className="text-[#c9a36a] font-bold">
-                          {fmtMoney(getCustomPipeTotal(), "EUR")}
-                        </span>
-                      </div>
-
-                      <div className="mt-4 flex gap-3">
-                        <motion.button
-                          onClick={addCustomPipeToCart}
-                          disabled={
-                            !customPipeName.trim() ||
-                            !selectedHead ||
-                            !selectedRing ||
-                            !selectedTail
-                          }
-                          className={`flex-1 px-5 py-3 rounded-xl font-bold shadow-lg ${
-                            customPipeName.trim() &&
-                            selectedHead &&
-                            selectedRing &&
-                            selectedTail
-                              ? "bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black"
-                              : "bg-stone-700/50 text-stone-400 cursor-not-allowed"
-                          }`}
-                          whileHover={customPipeName.trim() ? { scale: 1.02 } : {}}
-                          whileTap={customPipeName.trim() ? { scale: 0.98 } : {}}
-                        >
-                          {t("orders.actions.confirmAdd")}
-                        </motion.button>
-
-                        <button
-                          onClick={resetCustomPipe}
-                          className="px-5 py-3 rounded-xl border border-white/10 bg-black/30 text-stone-200 hover:bg-black/40 transition"
-                        >
-                          {t("orders.actions.reset")}
-                        </button>
-                      </div>
-
-                      <button
-                        onClick={() => navigate("/cart")}
-                        className="inline-flex items-center justify-center gap-2 mt-4 text-sm text-[#c9a36a] hover:text-[#e5c584] transition"
-                      >
-                        <ShoppingCart className="w-4 h-4" />
-                        {t("orders.actions.viewCart")}
-                      </button>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                      <div className="text-sm text-stone-300 mb-2">
-                        {t("orders.custom.noteTitle")}
-                      </div>
-                      <div className="text-sm text-stone-400 leading-relaxed">
-                        {t("orders.custom.noteBody")}
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-1 gap-3">
-                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                          <div className="text-xs text-stone-400 mb-1">
-                            {t("orders.custom.parts.head")}
-                          </div>
-                          <div className="text-sm text-stone-200">
-                            {selectedHead?.name || "—"}
-                          </div>
-                        </div>
-
-                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                          <div className="text-xs text-stone-400 mb-1">
-                            {t("orders.custom.parts.ring")}
-                          </div>
-                          <div className="text-sm text-stone-200">
-                            {selectedRing?.name || "—"}
-                          </div>
-                        </div>
-
-                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                          <div className="text-xs text-stone-400 mb-1">
-                            {t("orders.custom.parts.tail")}
-                          </div>
-                          <div className="text-sm text-stone-200">
-                            {selectedTail?.name || "—"}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* you can wire real selectors later */}
-                      <div className="mt-4 text-xs text-stone-500">
-                        {t("orders.custom.todo")}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+      {/* QUOTE (on theme) */}
+      <section className="relative py-20 px-4 sm:px-6 overflow-hidden">
+        <img
+          src={artisan2}
+          alt="Craftsmanship background"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-black/75" />
+        <motion.div
+          className="relative z-10 max-w-4xl mx-auto text-center"
+          initial={{ opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.75 }}
+        >
+          <FaQuoteLeft className="mx-auto text-4xl sm:text-5xl text-[#c9a36a] opacity-70 mb-6" />
+          <p className="text-lg sm:text-2xl italic leading-relaxed text-stone-200 px-2">
+            {t("home.quote") ||
+              "Tradition is not a memory—it’s a promise. Every pipe carries a piece of history."}
+          </p>
+          <p className="mt-4 text-sm sm:text-base text-stone-300 font-semibold">
+            — {t("home.quote_author") || "Hanseatic Pipes"}
+          </p>
         </motion.div>
-      </main>
-    </>
+      </section>
+
+      {/* CMS BLOCK (kept but themed) */}
+      {cmsData && (
+        <section className="py-16 px-4 sm:px-6">
+          <div className="max-w-6xl mx-auto rounded-3xl border border-white/10 bg-black/25 backdrop-blur-sm p-8 sm:p-10">
+            <div className="text-[#c9a36a] font-semibold text-sm mb-3">
+              {t("home.cms_badge") || "CMS"}
+            </div>
+            <h3 className="text-2xl sm:text-3xl font-bold mb-3">
+              {cmsData.cmsTitle}
+            </h3>
+            <p className="text-stone-300 leading-relaxed max-w-3xl">
+              {cmsData.cmsDescription}
+            </p>
+            <div className="mt-6">
+              <Link
+                to="/admin"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black font-semibold shadow-lg shadow-[#c9a36a]/15"
+              >
+                {cmsData.cmsButton} <FaArrowRight className="text-sm" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* MODAL (click outside closes, click image doesn’t) */}
+      <AnimatePresence>
+        {selectedImg && (
+          <motion.div
+            className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeImageModal}
+          >
+            <motion.img
+              src={selectedImg}
+              className="max-h-[80vh] w-auto rounded-2xl border border-white/10 shadow-2xl"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", damping: 22, stiffness: 260 }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* SCROLL TOP */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 bg-black/40 backdrop-blur-sm border border-white/10 hover:border-[#c9a36a]/35 text-white p-3 rounded-full shadow-xl transition z-[60]"
+          aria-label="Scroll to top"
+        >
+          ↑
+        </button>
+      )}
+    </div>
   );
-}
+};
+
+export default Home;
