@@ -17,6 +17,10 @@ const orderRoutes = require("./routes/orderRoutes");
 // ✅ NEW: Catalog Types route
 const catalogTypeRoutes = require("./routes/CatalogTypeRoutes");
 
+// ✅ Auth middleware + controller for /api/me
+const authMiddleware = require("./middleware/auth");
+const authController = require("./controllers/authController");
+
 // Error handler
 const errorHandler = require("./middleware/errorHandler");
 
@@ -41,8 +45,7 @@ app.use(
       // ✅ Allow listed origins
       if (allowedOrigins.includes(origin)) return callback(null, true);
 
-      // ✅ If you want to block unknown origins, change this to:
-      // return callback(new Error("Not allowed by CORS"), false);
+      // ✅ Allow all (you can tighten later)
       return callback(null, true);
     },
     credentials: true,
@@ -61,14 +64,28 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/photos", express.static(path.join(__dirname, "public/photos")));
 
 /* ================================
-   HEALTH CHECK
+   HEALTH CHECKS
 ================================ */
+
+// root health
 app.get("/", (req, res) => {
   res.json({
     success: true,
     message: `TelemaxWeb API running on port ${process.env.PORT || 4000}`,
   });
 });
+
+// ✅ FE ping endpoint: /api/health
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    status: "ok",
+    time: new Date().toISOString(),
+  });
+});
+
+// ✅ FE auth check endpoint: /api/me (requires Bearer token)
+app.get("/api/me", authMiddleware, authController.getCurrentUser);
 
 /* ================================
    ROUTES
@@ -79,7 +96,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 
-// ✅ ADD THIS: Types from catalog_types table
+// Types from catalog_types table
 app.use("/api/catalog-types", catalogTypeRoutes);
 
 /* ================================
