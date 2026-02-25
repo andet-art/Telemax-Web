@@ -12,6 +12,7 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const productRoutes = require("./routes/ProductRoutes");
+const orderRoutes = require("./routes/orderRoutes");
 
 // ✅ NEW: Catalog Types route
 const catalogTypeRoutes = require("./routes/CatalogTypeRoutes");
@@ -76,6 +77,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/orders", orderRoutes);
 
 // ✅ ADD THIS: Types from catalog_types table
 app.use("/api/catalog-types", catalogTypeRoutes);
