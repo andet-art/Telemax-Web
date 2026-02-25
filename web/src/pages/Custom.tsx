@@ -10,11 +10,13 @@ import {
   ShoppingCart,
   ShieldCheck,
   RotateCcw,
+  Wand2,
+  Layers,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCart } from "../context/CartContext";
 
-// ✅ NEW: step components (DB-driven)
+// ✅ DB-driven step components
 import HeadPicker, { type PipePart as DbPipePart } from "@/pages/custom/Head";
 import RingPicker from "@/pages/custom/Ring";
 import TailPicker from "@/pages/custom/Tail";
@@ -22,7 +24,18 @@ import TailPicker from "@/pages/custom/Tail";
 /** ---------------------------
  *  TYPES
  *  --------------------------*/
-type PipePart = DbPipePart;
+
+// ✅ Fix red underlines by ensuring the type includes what we use here (price/accent/photo/name/id)
+type PipeAccent = "gold" | "ember" | "ice";
+
+type PipePart = DbPipePart & {
+  id: number | string;
+  name: string;
+  price?: number | string | null;
+  photo?: string | null;
+  accent?: PipeAccent | string | null;
+};
+
 type BuildStep = 1 | 2 | 3;
 
 /** ---------------------------
@@ -31,19 +44,17 @@ type BuildStep = 1 | 2 | 3;
 function fmtMoney(amount: number, currency = "EUR") {
   const c = currency.toUpperCase();
   try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency: c }).format(
-      amount
-    );
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: c }).format(amount);
   } catch {
     return `${amount.toFixed(2)} ${c}`;
   }
 }
 
-function resolvePhoto(photo: string) {
+function resolvePhoto(photo?: string | null) {
   if (!photo) return "";
   if (photo.startsWith("http://") || photo.startsWith("https://")) return photo;
   const base = (import.meta as any).env?.VITE_API_URL || "";
-  return `${String(base).replace(/\/$/, "")}/${photo.replace(/^\//, "")}`;
+  return `${String(base).replace(/\/$/, "")}/${String(photo).replace(/^\//, "")}`;
 }
 
 /** ---------------------------
@@ -90,15 +101,19 @@ export default function Costum() {
   const [pipeName, setPipeName] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
+  // ✅ Intro overlay on open
+  const [introOpen, setIntroOpen] = useState(true);
+
   const total = useMemo(
     () => Number(head?.price || 0) + Number(ring?.price || 0) + Number(tail?.price || 0),
     [head, ring, tail]
   );
 
-  const accent: PipePart["accent"] = useMemo(
-    () => (tail?.accent || ring?.accent || head?.accent || "gold") as any,
-    [head, ring, tail]
-  );
+  const accent: PipeAccent = useMemo(() => {
+    const a = (tail?.accent || ring?.accent || head?.accent || "gold") as string;
+    if (a === "ember" || a === "ice" || a === "gold") return a;
+    return "gold";
+  }, [head, ring, tail]);
 
   const canNext = useMemo(() => {
     if (step === 1) return !!head;
@@ -147,7 +162,7 @@ export default function Costum() {
       price: total,
       quantity: 1,
       currency: "EUR",
-      image: resolvePhoto(head.photo), // ✅ head photo
+      image: resolvePhoto(head.photo), // head photo as main
       head,
       ring,
       tail,
@@ -199,6 +214,123 @@ export default function Costum() {
           >
             <CheckCircle className="w-5 h-5 text-[#c9a36a]" />
             <div className="text-sm font-medium">{toast}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ✅ Intro overlay */}
+      <AnimatePresence>
+        {introOpen && (
+          <motion.div
+            className="fixed inset-0 z-[110] flex items-center justify-center px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* backdrop */}
+            <motion.div
+              className="absolute inset-0 bg-black/80"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+
+            {/* glowing blob */}
+            <motion.div
+              className="absolute -top-24 left-1/2 -translate-x-1/2 w-[680px] h-[680px] rounded-full blur-3xl opacity-25"
+              style={{
+                background:
+                  "radial-gradient(circle, rgba(201,163,106,.9), rgba(0,0,0,0) 55%)",
+              }}
+              animate={{ y: [0, 18, 0], scale: [1, 1.03, 1] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            />
+
+            {/* card */}
+            <motion.div
+              className="relative w-full max-w-xl rounded-3xl border border-white/10 bg-gradient-to-br from-[#0f0b07]/95 to-[#1b120b]/95 backdrop-blur-xl shadow-[0_30px_90px_rgba(0,0,0,.65)] overflow-hidden"
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ type: "spring", damping: 22, stiffness: 260 }}
+            >
+              <div className="p-6 sm:p-8">
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0 w-12 h-12 rounded-2xl bg-[#c9a36a]/15 border border-[#c9a36a]/25 flex items-center justify-center">
+                    <Wand2 className="w-6 h-6 text-[#c9a36a]" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold tracking-widest text-stone-400 uppercase">
+                      Customization Studio
+                    </div>
+                    <h2 className="mt-2 text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-[#c9a36a] to-white bg-clip-text text-transparent">
+                      Build your own premium pipe
+                    </h2>
+                    <p className="mt-3 text-stone-300 leading-relaxed">
+                      You’ll customize your pipe in <span className="text-white font-semibold">3 steps</span>:
+                      pick a <span className="text-white font-semibold">bowl</span>, lock a{" "}
+                      <span className="text-white font-semibold">ring</span>, and finish with a{" "}
+                      <span className="text-white font-semibold">stem</span>.
+                      When you’re done, name your build and add it to cart.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <Layers className="w-4 h-4 text-[#c9a36a]" />
+                      Step 1
+                    </div>
+                    <div className="mt-2 text-xs text-stone-400">Choose Bowl</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <Layers className="w-4 h-4 text-[#c9a36a]" />
+                      Step 2
+                    </div>
+                    <div className="mt-2 text-xs text-stone-400">Pick Ring</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <Layers className="w-4 h-4 text-[#c9a36a]" />
+                      Step 3
+                    </div>
+                    <div className="mt-2 text-xs text-stone-400">Attach Stem</div>
+                  </div>
+                </div>
+
+                <div className="mt-7 flex flex-col sm:flex-row gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setIntroOpen(false);
+                      showToast("Welcome. Start with the bowl.");
+                    }}
+                    className="flex-1 px-6 py-3 rounded-2xl font-bold shadow-lg bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black inline-flex items-center justify-center gap-2"
+                  >
+                    Next
+                    <ArrowRight className="w-4 h-4" />
+                  </motion.button>
+
+                  <button
+                    onClick={() => navigate("/orders")}
+                    className="px-6 py-3 rounded-2xl border border-white/10 bg-black/30 text-stone-200 hover:bg-black/40 transition inline-flex items-center justify-center gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Orders
+                  </button>
+                </div>
+
+                <div className="mt-4 text-xs text-stone-500">
+                  Tip: If you want a fast build, select an item and it auto-advances to the next step.
+                </div>
+              </div>
+
+              <div className="h-1 bg-gradient-to-r from-transparent via-[#c9a36a] to-transparent opacity-60" />
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -278,9 +410,7 @@ export default function Costum() {
               <span>{heroTitle}</span>
             </div>
 
-            <p className="text-base sm:text-lg text-stone-300 max-w-3xl mx-auto">
-              {heroSub}
-            </p>
+            <p className="text-base sm:text-lg text-stone-300 max-w-3xl mx-auto">{heroSub}</p>
 
             {/* steps */}
             <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
@@ -310,7 +440,7 @@ export default function Costum() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={back}
-                    className="px-3 py-2 rounded-xl border border-white/10 bg-black/30 hover:bg-black/40 transition text-sm inline-flex items-center gap-2"
+                    className="px-3 py-2 rounded-xl border border-white/10 bg-black/30 hover:bg-black/40 transition text-sm inline-flex items-center gap-2 disabled:opacity-50"
                     disabled={step === 1}
                     aria-disabled={step === 1}
                   >
@@ -319,7 +449,7 @@ export default function Costum() {
                   </button>
                   <button
                     onClick={next}
-                    className={`px-3 py-2 rounded-xl border text-sm inline-flex items-center gap-2 transition ${
+                    className={`px-3 py-2 rounded-xl border text-sm inline-flex items-center gap-2 transition disabled:opacity-50 ${
                       canNext
                         ? "border-[#c9a36a]/30 bg-[#c9a36a]/15 hover:bg-[#c9a36a]/20 text-white"
                         : "border-white/10 bg-black/30 text-stone-500 cursor-not-allowed"
@@ -333,12 +463,12 @@ export default function Costum() {
                 </div>
               </div>
 
-              {/* ✅ NEW: render per-step picker components */}
+              {/* per-step picker components */}
               <div className="p-4 sm:p-6">
                 {step === 1 && (
                   <HeadPicker
-                    value={head}
-                    onChange={(p) => {
+                    value={head as any}
+                    onChange={(p: any) => {
                       setHead(p);
                       showToast("Bowl chosen. The chamber feels right.");
                       setStep(2);
@@ -349,8 +479,8 @@ export default function Costum() {
 
                 {step === 2 && (
                   <RingPicker
-                    value={ring}
-                    onChange={(p) => {
+                    value={ring as any}
+                    onChange={(p: any) => {
                       setRing(p);
                       showToast("Ring locked. The build tightens.");
                       setStep(3);
@@ -361,8 +491,8 @@ export default function Costum() {
 
                 {step === 3 && (
                   <TailPicker
-                    value={tail}
-                    onChange={(p) => {
+                    value={tail as any}
+                    onChange={(p: any) => {
                       setTail(p);
                       showToast("Stem attached. Your pipe is complete.");
                     }}

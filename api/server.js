@@ -15,6 +15,9 @@ const productRoutes = require("./routes/ProductRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const catalogTypeRoutes = require("./routes/CatalogTypeRoutes");
 
+// ✅ NEW: Catalog subtypes route
+const catalogSubtypeRoutes = require("./routes/catalogSubtypeRoutes");
+
 // ✅ NEW: Parts route
 const partsRoutes = require("./routes/partsRoutes");
 
@@ -63,6 +66,9 @@ app.use("/photos", express.static(path.join(__dirname, "public/photos")));
 // ✅ NEW: serve parts images so DB photo like "parts/HEAD-MODEL-01.png" works
 app.use("/parts", express.static(path.join(__dirname, "public/parts")));
 
+/* ✅ NEW: serve subtype color images e.g. "colors/averyBlack.png" */
+app.use("/colors", express.static(path.join(__dirname, "public/colors")));
+
 /* ================================
    HEALTH CHECKS
 ================================ */
@@ -92,6 +98,9 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/catalog-types", catalogTypeRoutes);
+
+// ✅ NEW: catalog subtypes endpoint
+app.use("/api/catalog-subtypes", catalogSubtypeRoutes);
 
 // ✅ NEW: parts endpoint
 app.use("/api/parts", partsRoutes);
