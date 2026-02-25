@@ -2,11 +2,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthContext";
+import axios from "axios";
+import { GoogleLogin } from "@react-oauth/google";
 
 type SignInForm = {
   email: string;
   password: string;
 };
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+});
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -14,6 +20,7 @@ export default function SignIn() {
   const [form, setForm] = useState<SignInForm>({ email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -40,6 +47,38 @@ export default function SignIn() {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      setGoogleLoading(true);
+      setError(null);
+
+      const idToken: string | undefined = credentialResponse?.credential;
+      if (!idToken) {
+        setError("Google sign in failed (no token).");
+        return;
+      }
+
+      const res = await api.post("/api/auth/google", { idToken });
+
+      // Store same as typical auth flow
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      navigate("/profile");
+    } catch (err: any) {
+      const data = err?.response?.data;
+      const msg =
+        data?.error ||
+        data?.message ||
+        (typeof data === "string" ? data : "") ||
+        err?.message ||
+        "Google sign in failed.";
+      setError(msg);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#14110f] text-white flex items-center justify-center px-4">
       <form
@@ -50,8 +89,38 @@ export default function SignIn() {
           Sign In
         </h1>
 
-        {error && <p className="text-red-400 text-center mb-4 font-medium">{error}</p>}
+        {error && (
+          <p className="text-red-400 text-center mb-4 font-medium">{error}</p>
+        )}
 
+        {/* GOOGLE SIGN IN */}
+        <div className="flex justify-center">
+          {googleLoading ? (
+            <button
+              type="button"
+              disabled
+              className="w-full bg-[#13100d] border border-stone-700 text-stone-200 py-2 rounded-md opacity-70"
+            >
+              Signing in with Google…
+            </button>
+          ) : (
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError("Google sign in failed.")}
+            />
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 my-6">
+          <div className="h-px bg-stone-800 flex-1" />
+          <span className="text-xs text-stone-500 uppercase tracking-widest">
+            or
+          </span>
+          <div className="h-px bg-stone-800 flex-1" />
+        </div>
+
+        {/* EMAIL/PASSWORD */}
         <div className="space-y-4">
           <input
             name="email"
@@ -75,7 +144,7 @@ export default function SignIn() {
 
         <button
           type="submit"
-          disabled={loading || !form.email || !form.password}
+          disabled={loading || googleLoading || !form.email || !form.password}
           className="w-full mt-6 bg-stone-700 hover:bg-stone-600 transition py-2 rounded-md text-white font-medium shadow-sm disabled:opacity-50"
         >
           {loading ? "Signing In…" : "Sign In"}
