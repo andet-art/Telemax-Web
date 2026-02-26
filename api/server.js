@@ -1,4 +1,4 @@
-// server.js
+// api/server.js  (FULL UPDATED)
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -13,9 +13,16 @@ const userRoutes = require("./routes/userRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const productRoutes = require("./routes/ProductRoutes");
 const orderRoutes = require("./routes/orderRoutes");
-
-// ✅ NEW: Catalog Types route
 const catalogTypeRoutes = require("./routes/CatalogTypeRoutes");
+
+// ✅ Catalog subtypes route
+const catalogSubtypeRoutes = require("./routes/catalogSubtypeRoutes");
+
+// ✅ Parts route
+const partsRoutes = require("./routes/partsRoutes");
+
+// ✅ NEW: Build Your Pipe route
+const buildYourPipeRoutes = require("./routes/buildYourPipeRoutes");
 
 // ✅ Auth middleware + controller for /api/me
 const authMiddleware = require("./middleware/auth");
@@ -41,11 +48,7 @@ app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-
-      // ✅ Allow listed origins
       if (allowedOrigins.includes(origin)) return callback(null, true);
-
-      // ✅ Allow all (you can tighten later)
       return callback(null, true);
     },
     credentials: true,
@@ -63,11 +66,15 @@ app.use(express.urlencoded({ extended: true }));
 ================================ */
 app.use("/photos", express.static(path.join(__dirname, "public/photos")));
 
+// ✅ serve parts images so DB photo like "parts/HEAD-MODEL-01.png" works
+app.use("/parts", express.static(path.join(__dirname, "public/parts")));
+
+// ✅ serve subtype color images e.g. "colors/averyBlack.png"
+app.use("/colors", express.static(path.join(__dirname, "public/colors")));
+
 /* ================================
    HEALTH CHECKS
 ================================ */
-
-// root health
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -75,7 +82,6 @@ app.get("/", (req, res) => {
   });
 });
 
-// ✅ FE ping endpoint: /api/health
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
@@ -84,7 +90,6 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ✅ FE auth check endpoint: /api/me (requires Bearer token)
 app.get("/api/me", authMiddleware, authController.getCurrentUser);
 
 /* ================================
@@ -96,8 +101,13 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 
-// Types from catalog_types table
 app.use("/api/catalog-types", catalogTypeRoutes);
+app.use("/api/catalog-subtypes", catalogSubtypeRoutes);
+
+app.use("/api/parts", partsRoutes);
+
+// ✅ NEW: builds endpoint
+app.use("/api/builds", buildYourPipeRoutes);
 
 /* ================================
    404 HANDLER

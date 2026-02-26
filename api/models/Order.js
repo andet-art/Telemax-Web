@@ -1,5 +1,5 @@
 // models/Order.js
-const db = require("../config/database");
+const db = require("../config/db");
 
 const n = (v) => Number(v ?? 0) || 0;
 
