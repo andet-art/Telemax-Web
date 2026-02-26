@@ -1,4 +1,4 @@
-// server.js  (UPDATED)
+// api/server.js  (FULL UPDATED)
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -15,11 +15,14 @@ const productRoutes = require("./routes/ProductRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const catalogTypeRoutes = require("./routes/CatalogTypeRoutes");
 
-// ✅ NEW: Catalog subtypes route
+// ✅ Catalog subtypes route
 const catalogSubtypeRoutes = require("./routes/catalogSubtypeRoutes");
 
-// ✅ NEW: Parts route
+// ✅ Parts route
 const partsRoutes = require("./routes/partsRoutes");
+
+// ✅ NEW: Build Your Pipe route
+const buildYourPipeRoutes = require("./routes/buildYourPipeRoutes");
 
 // ✅ Auth middleware + controller for /api/me
 const authMiddleware = require("./middleware/auth");
@@ -63,10 +66,10 @@ app.use(express.urlencoded({ extended: true }));
 ================================ */
 app.use("/photos", express.static(path.join(__dirname, "public/photos")));
 
-// ✅ NEW: serve parts images so DB photo like "parts/HEAD-MODEL-01.png" works
+// ✅ serve parts images so DB photo like "parts/HEAD-MODEL-01.png" works
 app.use("/parts", express.static(path.join(__dirname, "public/parts")));
 
-/* ✅ NEW: serve subtype color images e.g. "colors/averyBlack.png" */
+// ✅ serve subtype color images e.g. "colors/averyBlack.png"
 app.use("/colors", express.static(path.join(__dirname, "public/colors")));
 
 /* ================================
@@ -97,13 +100,14 @@ app.use("/api/users", userRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/catalog-types", catalogTypeRoutes);
 
-// ✅ NEW: catalog subtypes endpoint
+app.use("/api/catalog-types", catalogTypeRoutes);
 app.use("/api/catalog-subtypes", catalogSubtypeRoutes);
 
-// ✅ NEW: parts endpoint
 app.use("/api/parts", partsRoutes);
+
+// ✅ NEW: builds endpoint
+app.use("/api/builds", buildYourPipeRoutes);
 
 /* ================================
    404 HANDLER
