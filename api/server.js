@@ -1,4 +1,4 @@
-// api/server.js  (FULL UPDATED)
+// api/server.js  (FULL FIXED)
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -47,7 +47,10 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
+      // allow server-to-server / curl / no-origin
       if (!origin) return callback(null, true);
+
+      // allow known origins (and allow all to avoid blocking during dev)
       if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(null, true);
     },
@@ -62,23 +65,21 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* ================================
-   STATIC FILES (IMPORTANT)
-   This makes these URLs work:
+   STATIC FILES (FIXED + EXPLICIT)
+   These URLs must return image/jpeg, not text/html:
    - /parts/head2.jpeg
    - /photos/xxxx.png
    - /colors/xxxx.png
 ================================ */
-app.use(express.static(path.join(__dirname, "public")));
+const publicPath = path.resolve(__dirname, "public");
 
-/*
-  (Optional) If you want to keep explicit mounts too, you can,
-  but they’re not necessary once you serve /public above.
-  If you keep them, they won’t hurt:
+// ✅ Explicit mounts are most reliable
+app.use("/parts", express.static(path.join(publicPath, "parts")));
+app.use("/photos", express.static(path.join(publicPath, "photos")));
+app.use("/colors", express.static(path.join(publicPath, "colors")));
 
-  app.use("/photos", express.static(path.join(__dirname, "public/photos")));
-  app.use("/parts", express.static(path.join(__dirname, "public/parts")));
-  app.use("/colors", express.static(path.join(__dirname, "public/colors")));
-*/
+// Optional: also serve whole public (doesn't hurt)
+app.use(express.static(publicPath));
 
 /* ================================
    HEALTH CHECKS
@@ -98,6 +99,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// current user
 app.get("/api/me", authMiddleware, authController.getCurrentUser);
 
 /* ================================

@@ -1,7 +1,13 @@
 // web/src/pages/custom/Head.tsx
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, ArrowRight, Loader2, Palette, ArrowLeft } from "lucide-react";
+import {
+  CheckCircle,
+  ArrowRight,
+  Loader2,
+  Palette,
+  ArrowLeft,
+} from "lucide-react";
 import { api } from "@/lib/api";
 
 export type PipePart = {
@@ -29,11 +35,40 @@ type HeadProps = {
   onToast?: (msg: string) => void;
 };
 
+/**
+ * ✅ IMPORTANT:
+ * Your images are served from:
+ *   http://138.68.248.164:4000/parts/...
+ * but your VITE_API_URL may be:
+ *   http://138.68.248.164:4000/api
+ *
+ * So we must remove trailing "/api" (or "/api/...") when building static URLs.
+ */
 function resolvePhoto(photo: string) {
   if (!photo) return "";
-  if (photo.startsWith("http")) return photo;
-  const base = (import.meta as any).env?.VITE_API_URL || "";
-  return `${String(base).replace(/\/$/, "")}/${String(photo).replace(/^\//, "")}`;
+
+  const raw = String(photo).trim();
+
+  // If backend returns absolute URL already, use it
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  // API base may include /api (axios base), but static files are served from the host root
+  const apiBase = String((import.meta as any).env?.VITE_API_URL || "").replace(
+    /\/$/,
+    ""
+  );
+
+  // ✅ Strong strip: remove "/api" and anything after it ("/api", "/api/", "/api/v1", etc.)
+  const staticBase = apiBase.replace(/\/api(\/.*)?$/i, "");
+
+  // normalize path, remove leading slashes
+  let p = raw.replace(/^\/+/, "");
+
+  // if DB stored "public/parts/xx.jpg" or "api/public/parts/xx.jpg", normalize it
+  p = p.replace(/^api\/public\//i, "");
+  p = p.replace(/^public\//i, "");
+
+  return `${staticBase}/${p}`;
 }
 
 function getModelKey(code: string) {
@@ -60,7 +95,9 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
   const [subtypes, setSubtypes] = useState<CatalogSubtype[]>([]);
 
   const [selectedModelKey, setSelectedModelKey] = useState<string | null>(null);
-  const [selectedSubtypeId, setSelectedSubtypeId] = useState<number | null>(null);
+  const [selectedSubtypeId, setSelectedSubtypeId] = useState<number | null>(
+    null
+  );
 
   /* =========================
      FETCH HEAD PARTS
@@ -71,9 +108,18 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
     (async () => {
       try {
         setLoadingHeads(true);
-        const res = await api.get("/api/parts", { params: { part_type: "head" } });
+        const res = await api.get("/api/parts", {
+          params: { part_type: "head" },
+        });
         const rows = (res.data?.data ?? res.data ?? []) as PipePart[];
-        if (alive) setHeads(rows);
+
+        // normalize photos defensively (if backend sends weird prefixes)
+        const normalized = rows.map((r) => ({
+          ...r,
+          photo: typeof r.photo === "string" ? r.photo.trim() : "",
+        }));
+
+        if (alive) setHeads(normalized);
       } catch (e) {
         console.error("Failed to fetch heads:", e);
         if (alive) setHeads([]);
@@ -98,7 +144,13 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
         setLoadingSubtypes(true);
         const res = await api.get("/api/catalog-subtypes");
         const rows = (res.data?.data ?? res.data ?? []) as CatalogSubtype[];
-        if (alive) setSubtypes(rows);
+
+        const normalized = rows.map((r) => ({
+          ...r,
+          photo: r.photo ? String(r.photo).trim() : null,
+        }));
+
+        if (alive) setSubtypes(normalized);
       } catch (e) {
         console.error("Failed to fetch catalog subtypes:", e);
         if (alive) setSubtypes([]);
@@ -125,7 +177,7 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
     if (!normSuffix) return;
     const match = subtypes.find((s) => normalizeKey(s.name) === normSuffix);
     if (match) setSelectedSubtypeId(match.id);
-  }, [value?.code]);
+  }, [value?.code, subtypes]);
 
   /* =========================
      DERIVED
@@ -176,7 +228,9 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
     const colorKey = normalizeKey(selectedSubtype.name);
 
     const best =
-      variantsForSelectedModel.find((v) => normalizeKey((v.code.split("__")[1] || "").trim()) === colorKey) ||
+      variantsForSelectedModel.find(
+        (v) => normalizeKey((v.code.split("__")[1] || "").trim()) === colorKey
+      ) ||
       variantsForSelectedModel.find((v) => normalizeKey(v.name) === colorKey) ||
       null;
 
@@ -229,7 +283,8 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
                   Choose Head
                 </div>
                 <div className="mt-3 text-sm sm:text-base text-stone-400 max-w-2xl">
-                  Start by selecting a head model, then pick one of the available colors.
+                  Start by selecting a head model, then pick one of the available
+                  colors.
                 </div>
 
                 <div className="mt-7 flex items-center gap-3">
@@ -265,7 +320,9 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
             <div className="flex items-end justify-between gap-4 mb-4">
               <div>
                 <div className="text-sm text-stone-400">Select a model</div>
-                <div className="text-2xl font-bold text-stone-100">Head Models</div>
+                <div className="text-2xl font-bold text-stone-100">
+                  Head Models
+                </div>
                 <div className="text-xs text-stone-500 mt-1">
                   Tap a model to continue to colors.
                 </div>
@@ -300,7 +357,6 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
                       onClick={() => {
                         setSelectedModelKey(m.modelKey);
                         onToast?.("Model selected.");
-                        // ✅ Immediately go to colors (no "Next" here)
                         setStep(2);
                       }}
                       whileHover={{ y: -3 }}
@@ -317,12 +373,22 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
                           alt={m.displayName}
                           className="w-full h-full object-cover group-hover:scale-[1.02] transition"
                           loading="lazy"
+                          // ✅ helps if server has referer hotlink protection
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                          onError={() =>
+                            console.log("IMG FAIL (model cover):", m.cover)
+                          }
                         />
                       </div>
 
                       <div className="p-4">
-                        <div className="text-lg font-bold text-stone-100">{m.displayName}</div>
-                        <div className="text-xs text-stone-500 mt-1">{m.modelKey}</div>
+                        <div className="text-lg font-bold text-stone-100">
+                          {m.displayName}
+                        </div>
+                        <div className="text-xs text-stone-500 mt-1">
+                          {m.modelKey}
+                        </div>
                       </div>
 
                       {active && (
@@ -339,7 +405,7 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
         )}
 
         {/* =========================
-            COLORS SCREEN (has Back button)
+            COLORS SCREEN
         ========================= */}
         {step === 2 && (
           <motion.section
@@ -353,10 +419,11 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
               <div>
                 <div className="text-sm text-stone-400">Select a color</div>
                 <div className="text-2xl font-bold text-stone-100">Colors</div>
-                <div className="text-xs text-stone-500 mt-1">Choose one color to continue.</div>
+                <div className="text-xs text-stone-500 mt-1">
+                  Choose one color to continue.
+                </div>
               </div>
 
-              {/* ✅ Back button (required) */}
               <button
                 type="button"
                 onClick={() => setStep(1)}
@@ -386,7 +453,6 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
                       onClick={() => {
                         setSelectedSubtypeId(c.id);
                         onToast?.("Color selected.");
-                        // ✅ go to summary immediately after choosing a color
                         setStep(3);
                       }}
                       whileHover={{ y: -2 }}
@@ -405,6 +471,14 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
                               alt={c.name}
                               className="w-full h-full object-cover"
                               loading="lazy"
+                              referrerPolicy="no-referrer"
+                              crossOrigin="anonymous"
+                              onError={() =>
+                                console.log(
+                                  "IMG FAIL (color thumb):",
+                                  resolvePhoto(c.photo!)
+                                )
+                              }
                             />
                           ) : (
                             <div className="w-full h-full bg-white/5" />
@@ -412,11 +486,17 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold text-stone-100 truncate">{c.name}</div>
-                          <div className="text-[11px] text-stone-500 truncate">type_id={c.type_id}</div>
+                          <div className="text-sm font-semibold text-stone-100 truncate">
+                            {c.name}
+                          </div>
+                          <div className="text-[11px] text-stone-500 truncate">
+                            type_id={c.type_id}
+                          </div>
                         </div>
 
-                        {active && <CheckCircle className="w-5 h-5 text-[#c9a36a]" />}
+                        {active && (
+                          <CheckCircle className="w-5 h-5 text-[#c9a36a]" />
+                        )}
                       </div>
                     </motion.button>
                   );
@@ -441,7 +521,9 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
               <div>
                 <div className="text-sm text-stone-400">Review</div>
                 <div className="text-2xl font-bold text-stone-100">Summary</div>
-                <div className="text-xs text-stone-500 mt-1">Confirm, then continue.</div>
+                <div className="text-xs text-stone-500 mt-1">
+                  Confirm, then continue.
+                </div>
               </div>
 
               <button
@@ -464,13 +546,23 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
                         alt={selectedModel.displayName}
                         className="w-full h-full object-cover"
                         loading="lazy"
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
+                        onError={() =>
+                          console.log(
+                            "IMG FAIL (summary model):",
+                            selectedModel.cover
+                          )
+                        }
                       />
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-stone-100 truncate">
                         {selectedModel.displayName}
                       </div>
-                      <div className="text-[11px] text-stone-500 truncate">{selectedModel.modelKey}</div>
+                      <div className="text-[11px] text-stone-500 truncate">
+                        {selectedModel.modelKey}
+                      </div>
                     </div>
                     <CheckCircle className="w-5 h-5 text-[#c9a36a] ml-auto" />
                   </div>
@@ -490,14 +582,26 @@ export default function Head({ value, onChange, onToast }: HeadProps) {
                           alt={selectedSubtype.name}
                           className="w-full h-full object-cover"
                           loading="lazy"
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                          onError={() =>
+                            console.log(
+                              "IMG FAIL (summary color):",
+                              resolvePhoto(selectedSubtype.photo!)
+                            )
+                          }
                         />
                       ) : (
                         <div className="w-full h-full bg-white/5" />
                       )}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-stone-100 truncate">{selectedSubtype.name}</div>
-                      <div className="text-[11px] text-stone-500 truncate">type_id={selectedSubtype.type_id}</div>
+                      <div className="text-sm font-semibold text-stone-100 truncate">
+                        {selectedSubtype.name}
+                      </div>
+                      <div className="text-[11px] text-stone-500 truncate">
+                        type_id={selectedSubtype.type_id}
+                      </div>
                     </div>
                     <CheckCircle className="w-5 h-5 text-[#c9a36a] ml-auto" />
                   </div>
