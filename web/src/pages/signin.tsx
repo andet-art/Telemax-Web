@@ -1,6 +1,6 @@
 // pages/signin.tsx
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/components/AuthContext";
 import axios from "axios";
 import { GoogleLogin } from "@react-oauth/google";
@@ -16,7 +16,10 @@ const api = axios.create({
 
 export default function SignIn() {
   const navigate = useNavigate();
-  const { loginWithCredentials } = useAuth(); // should POST /api/auth/signin internally
+  const location = useLocation() as any;
+  const from = location?.state?.from || "/profile";
+
+  const { loginWithCredentials } = useAuth();
   const [form, setForm] = useState<SignInForm>({ email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,7 +35,9 @@ export default function SignIn() {
 
     try {
       await loginWithCredentials(form.email.trim(), form.password);
-      navigate("/profile");
+
+      // ✅ go back to where user came from (checkout)
+      navigate(from, { replace: true });
     } catch (err: any) {
       const data = err?.response?.data;
       const msg =
@@ -60,11 +65,11 @@ export default function SignIn() {
 
       const res = await api.post("/api/auth/google", { idToken });
 
-      // Store same as typical auth flow
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      navigate("/profile");
+      // ✅ go back to checkout
+      navigate(from, { replace: true });
     } catch (err: any) {
       const data = err?.response?.data;
       const msg =
@@ -85,15 +90,15 @@ export default function SignIn() {
         onSubmit={handleSubmit}
         className="bg-[#1e1b18] border border-stone-800 rounded-xl p-8 w-full max-w-md shadow-lg"
       >
-        <h1 className="text-3xl font-semibold mb-6 text-center text-white tracking-wide">
+        <h1 className="text-3xl font-semibold mb-2 text-center text-white tracking-wide">
           Sign In
         </h1>
+        <p className="text-center text-sm text-stone-400 mb-6">
+          Continue to <span className="text-[#c9a36a] font-semibold">Checkout</span>
+        </p>
 
-        {error && (
-          <p className="text-red-400 text-center mb-4 font-medium">{error}</p>
-        )}
+        {error && <p className="text-red-400 text-center mb-4 font-medium">{error}</p>}
 
-        {/* GOOGLE SIGN IN */}
         <div className="flex justify-center">
           {googleLoading ? (
             <button
@@ -104,23 +109,16 @@ export default function SignIn() {
               Signing in with Google…
             </button>
           ) : (
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => setError("Google sign in failed.")}
-            />
+            <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError("Google sign in failed.")} />
           )}
         </div>
 
-        {/* Divider */}
         <div className="flex items-center gap-3 my-6">
           <div className="h-px bg-stone-800 flex-1" />
-          <span className="text-xs text-stone-500 uppercase tracking-widest">
-            or
-          </span>
+          <span className="text-xs text-stone-500 uppercase tracking-widest">or</span>
           <div className="h-px bg-stone-800 flex-1" />
         </div>
 
-        {/* EMAIL/PASSWORD */}
         <div className="space-y-4">
           <input
             name="email"

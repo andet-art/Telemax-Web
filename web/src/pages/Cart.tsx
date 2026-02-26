@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ShoppingCart,
   Minus,
   Plus,
   X,
@@ -19,17 +18,10 @@ import {
   Trash2,
   Save,
   RotateCcw,
-  LogIn,
+  Wand2,
+  Layers,
 } from "lucide-react";
-import { useCart, availableColors, CartItem } from "../context/CartContext";
-import { api } from "@/lib/api"; // 🔗 use droplet API
-
-const colorSwatches: Record<string, string> = {
-  Natural: "#D2B48C",
-  "Dark Walnut": "#5C3A21",
-  Ebony: "#2B2B2B",
-  Mahogany: "#7B3F00",
-};
+import { useCart, CartItem } from "../context/CartContext";
 
 const Toast = ({
   message,
@@ -65,7 +57,6 @@ const Cart = () => {
     removeItem,
     clearCart,
     updateQuantity,
-    updateColor,
     cartTotal,
     cartItemCount,
     cartSavings,
@@ -74,9 +65,11 @@ const Cart = () => {
   } = useCart();
 
   const navigate = useNavigate();
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  const isLoggedIn = useMemo(() => !!localStorage.getItem("token"), []);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -107,22 +100,8 @@ const Cart = () => {
     }
   };
 
-  const handleProceedToCheckout = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      showToast("Please log in to proceed to checkout.", "error");
-      navigate("/login", { state: { from: "/checkout" } });
-      return;
-    }
-
-    // 🔎 quick API health ping (uses droplet base URL)
-    try {
-      await api.get("/api/health");
-    } catch {
-      showToast("API is unreachable. Please try again.", "error");
-      return;
-    }
-
+  // ✅ ALWAYS go to checkout. Auth wall is handled inside Checkout page.
+  const handleProceedToCheckout = () => {
     navigate("/checkout");
   };
 
@@ -130,7 +109,9 @@ const Cart = () => {
     return (
       <>
         <AnimatePresence>
-          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+          {toast && (
+            <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+          )}
         </AnimatePresence>
 
         <main className="relative min-h-screen pt-20 sm:pt-28 pb-24 flex flex-col items-center justify-center bg-[url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop')] bg-cover bg-center text-white font-serif px-4">
@@ -148,7 +129,9 @@ const Cart = () => {
             >
               🛒
             </motion.div>
-            <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-[#c9a36a] drop-shadow-lg">Your Cart is Empty</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-[#c9a36a] drop-shadow-lg">
+              Your Cart is Empty
+            </h1>
             <p className="text-lg text-stone-300 mb-8 leading-relaxed">
               Discover our exquisite collection of handcrafted pipes and create your perfect custom piece
             </p>
@@ -181,7 +164,9 @@ const Cart = () => {
   return (
     <>
       <AnimatePresence>
-        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        {toast && (
+          <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+        )}
       </AnimatePresence>
 
       <main className="relative min-h-screen pt-20 sm:pt-28 pb-24 bg-[url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop')] bg-cover bg-center text-white font-serif">
@@ -213,7 +198,10 @@ const Cart = () => {
             </div>
 
             <motion.div className="mt-4">
-              <Link to="/orders" className="inline-flex items-center gap-2 text-[#c9a36a] hover:text-[#e5c584] transition-colors">
+              <Link
+                to="/orders"
+                className="inline-flex items-center gap-2 text-[#c9a36a] hover:text-[#e5c584] transition-colors"
+              >
                 <ArrowLeft className="w-4 h-4" />
                 Continue Shopping
               </Link>
@@ -235,27 +223,48 @@ const Cart = () => {
                   >
                     <div className="flex flex-col sm:flex-row gap-6">
                       <div className="relative">
-                        <img src={item.image} alt={item.name} className="w-full sm:w-32 h-32 object-cover rounded-xl" />
-                        <div className="absolute top-2 left-2 flex flex-col gap-1">
-                          {item.featured && (
-                            <span className="bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                              <Star className="w-3 h-3 fill-current" />
-                              Featured
-                            </span>
-                          )}
-                          {item.isNew && (
-                            <span className="bg-gradient-to-r from-blue-600 to-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                              <Sparkles className="w-3 h-3" />
-                              New
-                            </span>
-                          )}
-                          {item.isBestseller && (
-                            <span className="bg-gradient-to-r from-orange-600 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                              <Crown className="w-3 h-3" />
-                              Best Seller
-                            </span>
-                          )}
-                        </div>
+                        {item.type === "custom" ? (
+                          <div className="w-full sm:w-32 h-32 rounded-xl border border-[#c9a36a]/25 bg-gradient-to-br from-black/35 to-black/10 grid place-items-center overflow-hidden">
+                            <div className="flex flex-col items-center justify-center text-center gap-2">
+                              <div className="w-12 h-12 rounded-full border border-white/10 bg-black/35 grid place-items-center">
+                                <Wand2 className="w-6 h-6 text-[#c9a36a]" />
+                              </div>
+                              <div className="text-xs font-bold text-stone-100">Custom Build</div>
+                              <div className="text-[11px] text-stone-400 flex items-center gap-1">
+                                <Layers className="w-3 h-3" />
+                                3-part design
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full sm:w-32 h-32 object-cover rounded-xl"
+                            />
+                            <div className="absolute top-2 left-2 flex flex-col gap-1">
+                              {item.featured && (
+                                <span className="bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                                  <Star className="w-3 h-3 fill-current" />
+                                  Featured
+                                </span>
+                              )}
+                              {item.isNew && (
+                                <span className="bg-gradient-to-r from-blue-600 to-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3" />
+                                  New
+                                </span>
+                              )}
+                              {item.isBestseller && (
+                                <span className="bg-gradient-to-r from-orange-600 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                                  <Crown className="w-3 h-3" />
+                                  Best Seller
+                                </span>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       <div className="flex-1 space-y-4">
@@ -269,7 +278,7 @@ const Cart = () => {
                           {item.type === "custom" && (
                             <div className="text-sm text-stone-400 space-y-1">
                               <div>Head: {item.head?.name}</div>
-                              <div>Ring: {item.ring?.name}</div>
+                              <div>Ring: {item.ring?.name || "No Ring"}</div>
                               <div>Tail: {item.tail?.name}</div>
                             </div>
                           )}
@@ -283,26 +292,6 @@ const Cart = () => {
                           >
                             {item.type === "custom" ? "🎨 Custom Design" : "🏪 Commercial"}
                           </span>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <label className="text-sm font-medium text-stone-300">Color:</label>
-                          <select
-                            value={item.color || availableColors[0]}
-                            onChange={(e) => updateColor(item.id, e.target.value, item.type)}
-                            className="bg-gradient-to-r from-stone-800/80 to-stone-700/80 border border-[#c9a36a]/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#c9a36a] backdrop-blur-sm"
-                          >
-                            {availableColors.map((color) => (
-                              <option key={color} value={color} className="bg-stone-800">
-                                {color}
-                              </option>
-                            ))}
-                          </select>
-                          <div
-                            className="w-6 h-6 rounded-full border-2 border-stone-600"
-                            style={{ backgroundColor: colorSwatches[item.color || availableColors[0]] }}
-                            title={item.color}
-                          />
                         </div>
 
                         <div className="flex items-center justify-between">
@@ -330,7 +319,9 @@ const Cart = () => {
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2 bg-gradient-to-r from-stone-800/60 to-stone-700/60 rounded-lg border border-[#c9a36a]/20 p-2">
                               <motion.button
-                                onClick={() => updateQuantity(item.id, Math.max(1, Number(item.quantity) - 1), item.type)}
+                                onClick={() =>
+                                  updateQuantity(item.id, Math.max(1, Number(item.quantity) - 1), item.type)
+                                }
                                 className="w-8 h-8 rounded-lg bg-stone-700/50 hover:bg-stone-600/50 flex items-center justify-center transition-colors"
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
@@ -431,13 +422,6 @@ const Cart = () => {
                     <CreditCard className="w-5 h-5" />
                     Proceed to Checkout
                   </motion.button>
-
-                  {!isLoggedIn && (
-                    <div className="text-xs text-stone-400 flex items-center gap-2 justify-center">
-                      <LogIn className="w-3 h-3" />
-                      You’ll need to <Link to="/login" state={{ from: "/checkout" }} className="underline text-[#c9a36a]">log in</Link> to complete your purchase.
-                    </div>
-                  )}
 
                   <motion.button
                     onClick={handleClearCart}

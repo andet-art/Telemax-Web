@@ -1,13 +1,20 @@
 import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { api } from "@/lib/api"; // ✅ use droplet-aware axios instance
+import { api } from "@/lib/api";
+import axios from "axios";
+import { GoogleLogin } from "@react-oauth/google";
 
 const safeNum = (v: number | string | undefined) => Number(v ?? 0) || 0;
+
+const authApi = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+});
 
 const Checkout = () => {
   const { cart, clearCart } = useCart();
   const navigate = useNavigate();
+  const location = useLocation() as any;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -18,7 +25,10 @@ const Checkout = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const isLoggedIn = !!localStorage.getItem("token");
 
   const totalPrice = useMemo(
     () => cart.reduce((acc, item) => acc + safeNum(item.price) * safeNum(item.quantity), 0),
@@ -46,6 +56,38 @@ const Checkout = () => {
     return true;
   };
 
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      setGoogleLoading(true);
+      setErrorMsg(null);
+
+      const idToken: string | undefined = credentialResponse?.credential;
+      if (!idToken) {
+        setErrorMsg("Google sign in failed (no token).");
+        return;
+      }
+
+      const res = await authApi.post("/api/auth/google", { idToken });
+
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      // ✅ stay on checkout (refresh view)
+      navigate("/checkout", { replace: true });
+    } catch (err: any) {
+      const data = err?.response?.data;
+      const msg =
+        data?.error ||
+        data?.message ||
+        (typeof data === "string" ? data : "") ||
+        err?.message ||
+        "Google sign in failed.";
+      setErrorMsg(msg);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -54,7 +96,8 @@ const Checkout = () => {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setErrorMsg("You must be logged in to place an order.");
+      // ✅ do NOT redirect away; checkout shows auth wall
+      setErrorMsg("You need to be signed in to continue.");
       return;
     }
 
@@ -82,7 +125,6 @@ const Checkout = () => {
         total_price: totalPrice,
       };
 
-      // ✅ POST to droplet API (base URL from VITE_API_BASE_URL)
       const { data } = await api.post("/api/orders", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -100,12 +142,17 @@ const Checkout = () => {
         },
       });
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        (typeof err?.response?.data === "string" ? err.response.data : "") ||
-        err?.message ||
-        "Error placing order.";
-      setErrorMsg(msg);
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        setErrorMsg("You need to be signed in to continue.");
+      } else {
+        const msg =
+          err?.response?.data?.message ||
+          (typeof err?.response?.data === "string" ? err.response.data : "") ||
+          err?.message ||
+          "Error placing order.";
+        setErrorMsg(msg);
+      }
       console.error(err);
     } finally {
       setIsSubmitting(false);
@@ -129,6 +176,74 @@ const Checkout = () => {
     );
   }
 
+  // ✅ AUTH WALL (big screen) if not logged in
+  if (!isLoggedIn) {
+    return (
+      <main className="relative min-h-screen w-full bg-[url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop')] bg-cover bg-center text-white font-serif">
+        <div className="absolute inset-0 bg-black/75" />
+        <div className="relative z-10 pt-28 pb-16 px-4 sm:px-6 md:px-10 max-w-3xl mx-auto">
+          <div className="bg-gradient-to-br from-[#1a120b]/95 to-[#2a1d13]/95 border border-[#c9a36a]/20 rounded-2xl p-8 shadow-xl">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-[#c9a36a] drop-shadow-xl">
+              You need to be signed in
+            </h1>
+            <p className="mt-3 text-stone-300">
+              Please sign in to continue to checkout and place your order.
+            </p>
+
+            {errorMsg && (
+              <div className="mt-6 rounded-lg border border-red-700/40 bg-red-900/30 px-4 py-3 text-red-200">
+                {errorMsg}
+              </div>
+            )}
+
+            {/* GOOGLE */}
+            <div className="mt-6">
+              {googleLoading ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full bg-[#13100d] border border-stone-700 text-stone-200 py-3 rounded-md opacity-70"
+                >
+                  Signing in with Google…
+                </button>
+              ) : (
+                <div className="flex justify-center">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => setErrorMsg("Google sign in failed.")}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 my-6">
+              <div className="h-px bg-stone-800 flex-1" />
+              <span className="text-xs text-stone-500 uppercase tracking-widest">or</span>
+              <div className="h-px bg-stone-800 flex-1" />
+            </div>
+
+            {/* EMAIL SIGN IN BUTTON */}
+            <button
+              type="button"
+              onClick={() => navigate("/signin", { state: { from: "/checkout" } })}
+              className="w-full bg-gradient-to-r from-[#c9a36a] to-[#d4b173] hover:from-[#d4b173] hover:to-[#e5c584] text-[#1a120b] px-6 py-3 rounded-xl font-extrabold shadow-lg transition"
+            >
+              Sign in
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate("/cart")}
+              className="mt-4 w-full border border-stone-700/60 bg-[#13100d]/40 hover:bg-[#13100d]/60 text-stone-200 px-6 py-3 rounded-xl font-semibold transition"
+            >
+              Back to cart
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="relative min-h-screen w-full bg-[url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop')] bg-cover bg-center text-white font-serif">
       <div className="absolute inset-0 bg-black/70" />
@@ -143,7 +258,10 @@ const Checkout = () => {
               <h2 className="text-2xl font-bold mb-4 text-white">Order Summary</h2>
               <ul className="divide-y divide-stone-700/60 text-stone-300 text-base">
                 {cart.map((item) => (
-                  <li key={`${item.id}-${item.type}-${item.color ?? ""}`} className="py-4 flex items-start justify-between gap-4">
+                  <li
+                    key={`${item.id}-${item.type}-${item.color ?? ""}`}
+                    className="py-4 flex items-start justify-between gap-4"
+                  >
                     <div className="flex items-start gap-3">
                       {item.image ? (
                         <img
@@ -162,7 +280,8 @@ const Checkout = () => {
                         </div>
                         {item.type === "custom" && (
                           <div className="text-xs text-stone-500 mt-1">
-                            {item.head?.name ?? "Head"} · {item.ring?.name ?? "Ring"} · {item.tail?.name ?? "Tail"}
+                            {item.head?.name ?? "Head"} · {item.ring?.name ?? "Ring"} ·{" "}
+                            {item.tail?.name ?? "Tail"}
                           </div>
                         )}
                         <div className="text-xs text-stone-500 mt-1">Qty: {item.quantity}</div>
@@ -172,11 +291,6 @@ const Checkout = () => {
                       <div className="text-[#c9a36a] font-semibold">
                         ${(safeNum(item.price) * safeNum(item.quantity)).toFixed(2)}
                       </div>
-                      {item.originalPrice && safeNum(item.originalPrice) > safeNum(item.price) && (
-                        <div className="text-xs text-stone-500 line-through">
-                          ${(safeNum(item.originalPrice) * safeNum(item.quantity)).toFixed(2)}
-                        </div>
-                      )}
                     </div>
                   </li>
                 ))}
