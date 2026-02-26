@@ -115,14 +115,6 @@ export default function Costum() {
   // ✅ Intro overlay on open
   const [introOpen, setIntroOpen] = useState(true);
 
-  /**
-   * ✅ IMPORTANT:
-   * catalog_types.id that should control which catalog_subtypes (colors) you fetch.
-   * For now we default to Avery (1) so the subtype colors show immediately.
-   * Later you can make a UI picker to change this.
-   */
-  const [selectedTypeId, setSelectedTypeId] = useState<number>(1);
-
   const total = useMemo(
     () => Number(head?.price || 0) + Number(ring?.price || 0) + Number(tail?.price || 0),
     [head, ring, tail]
@@ -167,7 +159,6 @@ export default function Costum() {
     setStep((s) => (s === 3 ? 2 : s === 2 ? 1 : 1));
   }, []);
 
-  // ✅ Only at the end (after step 3) you go to preview
   const goPreview = useCallback(() => {
     if (!head || !ring || !tail) {
       showToast(t("orders.toasts.completeDesign") || "Complete the build first.");
@@ -227,7 +218,7 @@ export default function Costum() {
         )}
       </AnimatePresence>
 
-      {/* ✅ Intro overlay */}
+      {/* Intro overlay */}
       <AnimatePresence>
         {introOpen && (
           <motion.div
@@ -236,15 +227,8 @@ export default function Costum() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            {/* backdrop */}
-            <motion.div
-              className="absolute inset-0 bg-black/80"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
+            <motion.div className="absolute inset-0 bg-black/80" />
 
-            {/* glowing blob */}
             <motion.div
               className="absolute -top-24 left-1/2 -translate-x-1/2 w-[680px] h-[680px] rounded-full blur-3xl opacity-25"
               style={{
@@ -255,7 +239,6 @@ export default function Costum() {
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             />
 
-            {/* card */}
             <motion.div
               className="relative w-full max-w-xl rounded-3xl border border-white/10 bg-gradient-to-br from-[#0f0b07]/95 to-[#1b120b]/95 backdrop-blur-xl shadow-[0_30px_90px_rgba(0,0,0,.65)] overflow-hidden"
               initial={{ opacity: 0, y: 18, scale: 0.98 }}
@@ -363,7 +346,6 @@ export default function Costum() {
       <main className="relative min-h-screen pt-20 sm:pt-28 pb-24 text-white font-serif overflow-hidden bg-[url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop')] bg-cover bg-center">
         <div className="absolute inset-0 bg-black/70" />
 
-        {/* subtle moving glow */}
         <motion.div
           className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full blur-3xl opacity-20"
           style={{
@@ -379,7 +361,6 @@ export default function Costum() {
         />
 
         <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6">
-          {/* Top bar */}
           <div className="flex items-center justify-between gap-3 mb-6">
             <button
               onClick={() => navigate("/orders")}
@@ -397,46 +378,6 @@ export default function Costum() {
             </div>
           </div>
 
-          {/* ✅ TYPE SELECTOR (so subtype colors work) */}
-          <div className="mb-5 flex items-center justify-center">
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
-              <span className="text-xs text-stone-400">Catalog type:</span>
-
-              <select
-                value={selectedTypeId}
-                onChange={(e) => {
-                  const id = Number(e.target.value || 1);
-                  setSelectedTypeId(id);
-
-                  // reset selections when switching type (recommended)
-                  setHead(null);
-                  setRing(null);
-                  setTail(null);
-                  setStep(1);
-
-                  showToast(`Type switched (id=${id}). Start with the bowl.`);
-                }}
-                className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-stone-100 outline-none"
-              >
-                <option value={1}>Avery</option>
-                <option value={2}>Nautica</option>
-                <option value={3}>Hamburg Cumberland</option>
-                <option value={4}>Elbe</option>
-                <option value={6}>Mountain</option>
-                <option value={7}>Anchor</option>
-                <option value={8}>Leaf</option>
-                <option value={9}>Real Horn</option>
-                <option value={10}>Long Pipes / Lesepfeifen</option>
-                <option value={11}>4th July</option>
-                <option value={12}>Hanse</option>
-                <option value={13}>Morta / Mooreiche</option>
-                <option value={14}>Black Sand</option>
-                <option value={15}>Autumn</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Hero */}
           <motion.div
             className="mb-8 sm:mb-10 text-center"
             initial={{ opacity: 0, y: 18 }}
@@ -464,7 +405,6 @@ export default function Costum() {
 
             <p className="text-base sm:text-lg text-stone-300 max-w-3xl mx-auto">{heroSub}</p>
 
-            {/* steps */}
             <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
               <StepPill step={1} active={step === 1} label="Bowl" />
               <StepPill step={2} active={step === 2} label="Ring" />
@@ -472,7 +412,6 @@ export default function Costum() {
             </div>
           </motion.div>
 
-          {/* ONLY selection (no preview anywhere) */}
           <motion.section
             className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f0b07]/85 to-[#1a120b]/85 backdrop-blur-lg shadow-2xl overflow-hidden"
             initial={{ opacity: 0, y: 14 }}
@@ -539,11 +478,9 @@ export default function Costum() {
               </div>
             </div>
 
-            {/* per-step picker components */}
             <div className="p-4 sm:p-6">
               {step === 1 && (
                 <HeadPicker
-                  typeId={selectedTypeId} // ✅ THIS IS THE FIX (fetch subtype colors)
                   value={head as any}
                   onChange={(p: any) => {
                     setHead(p);
@@ -556,8 +493,6 @@ export default function Costum() {
 
               {step === 2 && (
                 <RingPicker
-                  // If you also update Ring.tsx to accept typeId, pass it here too:
-                  // typeId={selectedTypeId}
                   value={ring as any}
                   onChange={(p: any) => {
                     setRing(p);
@@ -570,8 +505,6 @@ export default function Costum() {
 
               {step === 3 && (
                 <TailPicker
-                  // If you also update Tail.tsx to accept typeId, pass it here too:
-                  // typeId={selectedTypeId}
                   value={tail as any}
                   onChange={(p: any) => {
                     setTail(p);
