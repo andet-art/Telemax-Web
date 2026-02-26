@@ -21,7 +21,7 @@ const catalogSubtypeRoutes = require("./routes/catalogSubtypeRoutes");
 // ✅ Parts route
 const partsRoutes = require("./routes/partsRoutes");
 
-// ✅ NEW: Build Your Pipe route
+// ✅ Build Your Pipe route
 const buildYourPipeRoutes = require("./routes/buildYourPipeRoutes");
 
 // ✅ Auth middleware + controller for /api/me
@@ -62,15 +62,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* ================================
-   STATIC IMAGES
+   STATIC FILES (IMPORTANT)
+   This makes these URLs work:
+   - /parts/head2.jpeg
+   - /photos/xxxx.png
+   - /colors/xxxx.png
 ================================ */
-app.use("/photos", express.static(path.join(__dirname, "public/photos")));
+app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ serve parts images so DB photo like "parts/HEAD-MODEL-01.png" works
-app.use("/parts", express.static(path.join(__dirname, "public/parts")));
+/*
+  (Optional) If you want to keep explicit mounts too, you can,
+  but they’re not necessary once you serve /public above.
+  If you keep them, they won’t hurt:
 
-// ✅ serve subtype color images e.g. "colors/averyBlack.png"
-app.use("/colors", express.static(path.join(__dirname, "public/colors")));
+  app.use("/photos", express.static(path.join(__dirname, "public/photos")));
+  app.use("/parts", express.static(path.join(__dirname, "public/parts")));
+  app.use("/colors", express.static(path.join(__dirname, "public/colors")));
+*/
 
 /* ================================
    HEALTH CHECKS
@@ -106,7 +114,7 @@ app.use("/api/catalog-subtypes", catalogSubtypeRoutes);
 
 app.use("/api/parts", partsRoutes);
 
-// ✅ NEW: builds endpoint
+// ✅ builds endpoint
 app.use("/api/builds", buildYourPipeRoutes);
 
 /* ================================
