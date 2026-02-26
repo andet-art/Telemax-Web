@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import type { PipePart } from "./Head";
 
@@ -10,6 +9,9 @@ type TailProps = {
   value: PipePart | null;
   onChange: (p: PipePart) => void;
   onToast?: (msg: string) => void;
+
+  // ✅ NEW: parent will handle draft + navigation
+  onFinish?: () => void;
 };
 
 function resolvePhoto(photo: string) {
@@ -19,21 +21,17 @@ function resolvePhoto(photo: string) {
   return `${String(base).replace(/\/$/, "")}/${String(photo).replace(/^\//, "")}`;
 }
 
-export default function Tail({ value, onChange, onToast }: TailProps) {
-  const navigate = useNavigate();
-
+export default function Tail({ value, onChange, onToast, onFinish }: TailProps) {
   const [step, setStep] = useState<0 | 1>(0);
   const [loading, setLoading] = useState(true);
   const [tails, setTails] = useState<PipePart[]>([]);
 
-  // Scroll to top when mounted
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
     onToast?.("Final step. Choose your tail.");
     // eslint-disable-next-line
   }, []);
 
-  // Fetch tail parts
   useEffect(() => {
     let alive = true;
 
@@ -68,7 +66,6 @@ export default function Tail({ value, onChange, onToast }: TailProps) {
   return (
     <div className="w-full space-y-6">
       <AnimatePresence mode="wait">
-        {/* INTRO SCREEN */}
         {step === 0 && (
           <motion.section
             key="intro"
@@ -78,9 +75,7 @@ export default function Tail({ value, onChange, onToast }: TailProps) {
             className="rounded-[32px] border border-white/10 bg-[#0b0704]/60 backdrop-blur-xl p-10"
           >
             <div className="text-sm text-stone-400">Final Step</div>
-            <div className="mt-2 text-4xl font-extrabold text-stone-100">
-              Choose Tail
-            </div>
+            <div className="mt-2 text-4xl font-extrabold text-stone-100">Choose Tail</div>
             <div className="mt-3 text-stone-400 max-w-xl">
               Complete your pipe by selecting the tail.
             </div>
@@ -97,7 +92,6 @@ export default function Tail({ value, onChange, onToast }: TailProps) {
           </motion.section>
         )}
 
-        {/* TAIL GRID */}
         {step === 1 && (
           <motion.section
             key="tails"
@@ -179,11 +173,14 @@ export default function Tail({ value, onChange, onToast }: TailProps) {
                   })}
                 </div>
 
-                {/* ✅ BIG FINISH BUTTON */}
+                {/* ✅ FINISH -> call parent goPreview() */}
                 <div className="mt-8 flex justify-center">
                   <button
                     type="button"
-                    onClick={() => navigate("/preview")}
+                    onClick={() => {
+                      if (!value) return;
+                      onFinish?.();
+                    }}
                     disabled={!value}
                     className={`w-full sm:w-auto text-center rounded-3xl px-10 py-5 text-lg font-bold inline-flex items-center justify-center gap-3 border transition ${
                       value
@@ -191,7 +188,7 @@ export default function Tail({ value, onChange, onToast }: TailProps) {
                         : "bg-black/20 border-white/10 text-stone-500 cursor-not-allowed"
                     }`}
                   >
-                    Finish Product <ArrowRight className="w-6 h-6" />
+                    Finish & Preview <ArrowRight className="w-6 h-6" />
                   </button>
                 </div>
               </>

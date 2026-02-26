@@ -17,14 +17,10 @@ import {
 import { useTranslation } from "react-i18next";
 import { useCart } from "../context/CartContext";
 
-// ✅ DB-driven step components
 import HeadPicker, { type PipePart as DbPipePart } from "@/pages/custom/Head";
 import RingPicker from "@/pages/custom/Ring";
 import TailPicker from "@/pages/custom/Tail";
 
-/** ---------------------------
- *  TYPES
- *  --------------------------*/
 type PipeAccent = "gold" | "ember" | "ice";
 
 type PipePart = DbPipePart & {
@@ -39,7 +35,7 @@ type BuildStep = 1 | 2 | 3;
 
 type CustomDraft = {
   head: PipePart;
-  ring: PipePart;
+  ring: PipePart | null; // ✅ ring can be null (No Ring)
   tail: PipePart;
   total: number;
   accent: PipeAccent;
@@ -47,9 +43,6 @@ type CustomDraft = {
   createdAt: number;
 };
 
-/** ---------------------------
- *  MONEY
- *  --------------------------*/
 function fmtMoney(amount: number, currency = "EUR") {
   const c = currency.toUpperCase();
   try {
@@ -59,9 +52,6 @@ function fmtMoney(amount: number, currency = "EUR") {
   }
 }
 
-/** ---------------------------
- *  STORAGE
- *  --------------------------*/
 const DRAFT_KEY = "telemax_custom_draft";
 function saveDraft(draft: CustomDraft) {
   try {
@@ -69,9 +59,6 @@ function saveDraft(draft: CustomDraft) {
   } catch {}
 }
 
-/** ---------------------------
- *  SMALL UI HELPERS
- *  --------------------------*/
 const StepPill = ({
   step,
   active,
@@ -107,32 +94,43 @@ export default function Costum() {
   const [step, setStep] = useState<BuildStep>(1);
 
   const [head, setHead] = useState<PipePart | null>(null);
-  const [ring, setRing] = useState<PipePart | null>(null);
+
+  // ✅ tri-state:
+  // undefined = not chosen yet
+  // null = No Ring chosen
+  // PipePart = ring chosen
+  const [ring, setRing] = useState<PipePart | null | undefined>(undefined);
+
   const [tail, setTail] = useState<PipePart | null>(null);
 
   const [toast, setToast] = useState<string | null>(null);
-
-  // ✅ Intro overlay on open
   const [introOpen, setIntroOpen] = useState(true);
 
-  const total = useMemo(
-    () => Number(head?.price || 0) + Number(ring?.price || 0) + Number(tail?.price || 0),
-    [head, ring, tail]
-  );
+  const total = useMemo(() => {
+    const h = Number(head?.price || 0);
+    const r = Number((ring && (ring as any).price) || 0); // ring might be null/undefined
+    const ta = Number(tail?.price || 0);
+    return h + r + ta;
+  }, [head, ring, tail]);
 
   const accent: PipeAccent = useMemo(() => {
-    const a = (tail?.accent || ring?.accent || head?.accent || "gold") as string;
+    const a = (tail?.accent || (ring as any)?.accent || head?.accent || "gold") as string;
     if (a === "ember" || a === "ice" || a === "gold") return a;
     return "gold";
   }, [head, ring, tail]);
 
+  // ✅ step rules:
+  // step1 needs head
+  // step2 needs ring "chosen" (either null or object) => ring !== undefined
+  // step3 needs tail
   const canNext = useMemo(() => {
     if (step === 1) return !!head;
-    if (step === 2) return !!ring;
+    if (step === 2) return ring !== undefined; // ✅ allow null
     return !!tail;
   }, [step, head, ring, tail]);
 
-  const isComplete = useMemo(() => !!head && !!ring && !!tail, [head, ring, tail]);
+  // ✅ complete rules: head + tail + ring chosen (null is valid)
+  const isComplete = useMemo(() => !!head && ring !== undefined && !!tail, [head, ring, tail]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -141,7 +139,7 @@ export default function Costum() {
 
   const reset = useCallback(() => {
     setHead(null);
-    setRing(null);
+    setRing(undefined);
     setTail(null);
     setStep(1);
     try {
@@ -160,14 +158,14 @@ export default function Costum() {
   }, []);
 
   const goPreview = useCallback(() => {
-    if (!head || !ring || !tail) {
+    if (!head || ring === undefined || !tail) {
       showToast(t("orders.toasts.completeDesign") || "Complete the build first.");
       return;
     }
 
     const draft: CustomDraft = {
       head,
-      ring,
+      ring: ring ?? null,
       tail,
       total: Number(total || 0),
       accent,
@@ -186,10 +184,8 @@ export default function Costum() {
   }, [step]);
 
   const heroSub = useMemo(() => {
-    if (step === 1)
-      return "Start with the heart of the pipe. Pick a chamber that fits your ritual.";
-    if (step === 2)
-      return "The ring is the signature. Choose the accent that defines the build.";
+    if (step === 1) return "Start with the heart of the pipe. Pick a chamber that fits your ritual.";
+    if (step === 2) return "The ring is the signature. Choose the accent that defines the build.";
     return "Final touch. The stem decides comfort and character.";
   }, [step]);
 
@@ -202,7 +198,6 @@ export default function Costum() {
 
   return (
     <>
-      {/* Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -218,7 +213,6 @@ export default function Costum() {
         )}
       </AnimatePresence>
 
-      {/* Intro overlay */}
       <AnimatePresence>
         {introOpen && (
           <motion.div
@@ -232,8 +226,7 @@ export default function Costum() {
             <motion.div
               className="absolute -top-24 left-1/2 -translate-x-1/2 w-[680px] h-[680px] rounded-full blur-3xl opacity-25"
               style={{
-                background:
-                  "radial-gradient(circle, rgba(201,163,106,.9), rgba(0,0,0,0) 55%)",
+                background: "radial-gradient(circle, rgba(201,163,106,.9), rgba(0,0,0,0) 55%)",
               }}
               animate={{ y: [0, 18, 0], scale: [1, 1.03, 1] }}
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
@@ -265,35 +258,9 @@ export default function Costum() {
                       <span className="text-white font-semibold">bowl</span>, lock a{" "}
                       <span className="text-white font-semibold">ring</span>, and finish with a{" "}
                       <span className="text-white font-semibold">stem</span>. <br />
-                      <span className="text-white font-semibold">
-                        There is NO preview during the steps.
-                      </span>{" "}
+                      <span className="text-white font-semibold">There is NO preview during the steps.</span>{" "}
                       Only after Step 3 you continue to Preview.
                     </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                      <Layers className="w-4 h-4 text-[#c9a36a]" />
-                      Step 1
-                    </div>
-                    <div className="mt-2 text-xs text-stone-400">Choose Bowl</div>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                      <Layers className="w-4 h-4 text-[#c9a36a]" />
-                      Step 2
-                    </div>
-                    <div className="mt-2 text-xs text-stone-400">Pick Ring</div>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                      <Layers className="w-4 h-4 text-[#c9a36a]" />
-                      Step 3
-                    </div>
-                    <div className="mt-2 text-xs text-stone-400">Attach Stem</div>
                   </div>
                 </div>
 
@@ -307,8 +274,7 @@ export default function Costum() {
                     }}
                     className="flex-1 px-6 py-3 rounded-2xl font-bold shadow-lg bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black inline-flex items-center justify-center gap-2"
                   >
-                    Next
-                    <ArrowRight className="w-4 h-4" />
+                    Next <ArrowRight className="w-4 h-4" />
                   </motion.button>
 
                   <button
@@ -331,7 +297,6 @@ export default function Costum() {
         )}
       </AnimatePresence>
 
-      {/* Floating Cart */}
       <button
         onClick={() => navigate("/cart")}
         className="fixed bottom-4 right-4 z-[80] flex items-center gap-2 px-4 py-3 rounded-full shadow-xl bg-gradient-to-r from-[#c9a36a] to-[#d4b173] text-black font-semibold hover:opacity-90 transition"
@@ -345,20 +310,6 @@ export default function Costum() {
 
       <main className="relative min-h-screen pt-20 sm:pt-28 pb-24 text-white font-serif overflow-hidden bg-[url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&h=1080&fit=crop')] bg-cover bg-center">
         <div className="absolute inset-0 bg-black/70" />
-
-        <motion.div
-          className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full blur-3xl opacity-20"
-          style={{
-            background:
-              accent === "ember"
-                ? "radial-gradient(circle, rgba(255,178,107,.8), rgba(0,0,0,0) 55%)"
-                : accent === "ice"
-                ? "radial-gradient(circle, rgba(168,216,255,.8), rgba(0,0,0,0) 55%)"
-                : "radial-gradient(circle, rgba(201,163,106,.8), rgba(0,0,0,0) 55%)",
-          }}
-          animate={{ y: [0, 22, 0], scale: [1, 1.04, 1] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-        />
 
         <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6">
           <div className="flex items-center justify-between gap-3 mb-6">
@@ -386,13 +337,6 @@ export default function Costum() {
           >
             <motion.h1
               className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 drop-shadow-xl bg-gradient-to-r from-white via-[#c9a36a] to-white bg-clip-text text-transparent"
-              animate={{
-                textShadow: [
-                  "0 0 20px rgba(201,163,106,.25)",
-                  "0 0 30px rgba(201,163,106,.45)",
-                  "0 0 20px rgba(201,163,106,.25)",
-                ],
-              }}
               transition={{ duration: 3, repeat: Infinity }}
             >
               Build Your Pipe
@@ -431,7 +375,6 @@ export default function Costum() {
                   onClick={back}
                   className="px-3 py-2 rounded-xl border border-white/10 bg-black/30 hover:bg-black/40 transition text-sm inline-flex items-center gap-2 disabled:opacity-50"
                   disabled={step === 1}
-                  aria-disabled={step === 1}
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Back
@@ -446,10 +389,8 @@ export default function Costum() {
                         : "border-white/10 bg-black/30 text-stone-500 cursor-not-allowed"
                     }`}
                     disabled={!canNext}
-                    aria-disabled={!canNext}
                   >
-                    Next
-                    <ArrowRight className="w-4 h-4" />
+                    Next <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (
                   <motion.button
@@ -463,8 +404,7 @@ export default function Costum() {
                         : "border-white/10 bg-black/30 text-stone-500 cursor-not-allowed"
                     }`}
                   >
-                    Preview
-                    <Eye className="w-4 h-4" />
+                    Preview <Eye className="w-4 h-4" />
                   </motion.button>
                 )}
 
@@ -495,8 +435,8 @@ export default function Costum() {
                 <RingPicker
                   value={ring as any}
                   onChange={(p: any) => {
-                    setRing(p);
-                    showToast("Ring locked. The build tightens.");
+                    setRing(p); // ✅ can be null (No Ring)
+                    showToast(p ? "Ring locked. The build tightens." : "No ring. Clean build.");
                     setStep(3);
                   }}
                   onToast={showToast}
@@ -511,6 +451,7 @@ export default function Costum() {
                     showToast("Stem attached. Continue to preview.");
                   }}
                   onToast={showToast}
+                  onFinish={goPreview} // ✅ FIX: Finish opens /custom/preview with state + session draft
                 />
               )}
             </div>

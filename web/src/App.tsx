@@ -1,5 +1,5 @@
 // src/App.tsx
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 import MainLayout from "./layouts/MainLayout";
 
@@ -32,6 +32,9 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 // ✅ Custom builder page
 import Custom from "./pages/Custom";
 
+// ✅ Preview page (NEW)
+import Preview from "./pages/custom/Preview";
+
 function App() {
   return (
     <Router>
@@ -39,6 +42,9 @@ function App() {
         <LanguageSwitcher />
 
         <Routes>
+          {/* optional convenience: redirect / -> /home */}
+          <Route path="/" element={<Navigate to="/home" replace />} />
+
           <Route path="/home" element={<Home />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/about" element={<About />} />
@@ -50,16 +56,23 @@ function App() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/payment" element={<Payment />} />
+
           <Route path="/customize-image/:id" element={<CustomImageCustomizer />} />
           <Route path="/customize/:id" element={<CustomizePage />} />
+
           <Route path="/admindashboard" element={<AdminDashboard />} />
           <Route path="/order-history" element={<OrderHistory />} />
+
           <Route path="/profile/overview" element={<Overview />} />
           <Route path="/profile/addresses" element={<Addresses />} />
           <Route path="/profile/settings" element={<Settings />} />
 
-          {/* ✅ NEW route */}
+          {/* ✅ Custom builder + preview */}
           <Route path="/custom" element={<Custom />} />
+          <Route path="/custom/preview" element={<Preview />} />
+
+          {/* fallback */}
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </MainLayout>
     </Router>
